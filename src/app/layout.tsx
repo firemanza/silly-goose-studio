@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Alegreya_Sans, Cormorant_Garamond } from "next/font/google";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import JsonLd from "@/components/seo/json-ld";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
-const bodyFont = Inter({
+const bodyFont = Alegreya_Sans({
   subsets: ["latin"],
   variable: "--font-body-family",
+  weight: ["400", "500", "700"],
 });
 
-const headingFont = Playfair_Display({
+const headingFont = Cormorant_Garamond({
   subsets: ["latin"],
   variable: "--font-heading-family",
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
