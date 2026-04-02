@@ -35,9 +35,9 @@ const tapePattern = [
 
 function frameWidth(width: number, height: number) {
   const ratio = width / height;
-  if (ratio > 1.15) return "w-[255px] sm:w-[290px]";
-  if (ratio < 0.9) return "w-[210px] sm:w-[235px]";
-  return "w-[225px] sm:w-[250px]";
+  if (ratio > 1.15) return "w-[230px] sm:w-[255px]";
+  if (ratio < 0.9) return "w-[188px] sm:w-[212px]";
+  return "w-[205px] sm:w-[228px]";
 }
 
 function imageWindowSize(width: number, height: number) {
@@ -63,10 +63,6 @@ export default function PortfolioShowcase() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [previewMaxHeight, setPreviewMaxHeight] = useState<number | null>(null);
-  const previewCardRef = useRef<HTMLDivElement>(null);
-  const previewFrameRef = useRef<HTMLDivElement>(null);
-  const previewFooterRef = useRef<HTMLDivElement>(null);
 
   const filteredImages = useMemo(() => {
     if (activeCategory === "all") return portfolioImages;
@@ -85,6 +81,12 @@ export default function PortfolioShowcase() {
     hoveredIndex !== null && hoveredIndex < filteredImages.length
       ? filteredImages[hoveredIndex]
       : filteredImages[0] ?? null;
+  const previewIndex =
+    hoveredIndex !== null && hoveredIndex < filteredImages.length ? hoveredIndex : 0;
+  const secondaryPreviewIndex =
+    filteredImages.length > 1 ? (previewIndex + 1) % filteredImages.length : null;
+  const secondaryPreviewImage =
+    secondaryPreviewIndex !== null ? filteredImages[secondaryPreviewIndex] : null;
 
   const featuredMobile = filteredImages[0] ?? null;
 
@@ -106,37 +108,6 @@ export default function PortfolioShowcase() {
     if (selectedIndex === null) return;
     setSelectedIndex((selectedIndex - 1 + filteredImages.length) % filteredImages.length);
   };
-
-  useEffect(() => {
-    const previewCard = previewCardRef.current;
-    const previewFrame = previewFrameRef.current;
-    const previewFooter = previewFooterRef.current;
-
-    if (!previewCard || !previewFrame || !previewFooter) return;
-
-    const updatePreviewSize = () => {
-      const frameTop = previewFrame.getBoundingClientRect().top;
-      const footerHeight = previewFooter.getBoundingClientRect().height;
-      const cardStyles = window.getComputedStyle(previewCard);
-      const cardPaddingBottom = Number.parseFloat(cardStyles.paddingBottom) || 0;
-      const availableHeight = window.innerHeight - frameTop - footerHeight - cardPaddingBottom;
-
-      setPreviewMaxHeight(availableHeight > 0 ? availableHeight : null);
-    };
-
-    updatePreviewSize();
-
-    const resizeObserver = new ResizeObserver(updatePreviewSize);
-    resizeObserver.observe(previewCard);
-    resizeObserver.observe(previewFooter);
-
-    window.addEventListener("resize", updatePreviewSize);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updatePreviewSize);
-    };
-  }, [hoveredIndex, activeCategory, filteredImages.length]);
 
   if (filteredImages.length === 0) {
     return (
@@ -268,14 +239,14 @@ export default function PortfolioShowcase() {
         </div>
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] xl:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] lg:gap-6">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(560px,620px)] lg:gap-6">
         <div className="relative overflow-hidden rounded-sm border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-5 shadow-[0_20px_40px_rgba(35,28,20,0.12)] sm:p-7">
           <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-accent/10 blur-2xl" />
           <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-foreground/8 blur-3xl" />
           <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(30,24,20,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(30,24,20,0.08)_1px,transparent_1px)] [background-size:32px_32px]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.35),transparent)]" />
 
-          <div className="relative flex flex-wrap items-end justify-center gap-5 sm:gap-6">
+          <div className="relative flex flex-wrap items-end justify-center gap-4 sm:gap-5">
             {filteredImages.map((image, index) => (
               <button
                 key={image.src}
@@ -329,50 +300,24 @@ export default function PortfolioShowcase() {
         </div>
 
         <aside className="block">
-          <div
-            ref={previewCardRef}
-            className="sticky top-20 overflow-hidden rounded-sm border border-foreground/16 bg-[linear-gradient(170deg,#fffef9,#f5ebd8)] p-3 shadow-[0_24px_60px_rgba(25,20,14,0.28)]"
-          >
-            <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#d66538,#c63d2f,#d66538)]" />
-            <div className="mb-2 flex items-center justify-between border-b border-foreground/12 pb-2">
-              <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">
-                Live Preview
-              </span>
-              <span className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
-                {hoveredIndex !== null ? String(hoveredIndex + 1).padStart(2, "0") : "01"}
-              </span>
-            </div>
-            <div
-              ref={previewFrameRef}
-              className="w-full overflow-hidden border border-foreground/12 bg-[#efe5d1] shadow-inner"
-              style={{
-                height: previewMaxHeight ? `${previewMaxHeight}px` : undefined,
-              }}
-            >
-              {previewImage ? (
-                <div className="flex h-full w-full items-center justify-center p-4">
-                  <img
-                    src={getImagePath(previewImage.src)}
-                    alt=""
-                    width={previewImage.width}
-                    height={previewImage.height}
-                    loading="eager"
-                    fetchPriority="high"
-                    decoding="async"
-                    className="max-h-full max-w-full object-contain"
-                  />
-                </div>
-              ) : null}
-            </div>
-            <div ref={previewFooterRef} className="border-t border-foreground/10 px-1 pt-4">
-              <p className="font-heading text-3xl text-foreground">
-                {previewImage?.title ?? "Untitled"}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                A tactile desktop composition stays intact here, while mobile gets a cleaner path to
-                the same work.
-              </p>
-            </div>
+          <div className="sticky top-20 grid gap-4 2xl:grid-cols-2">
+            <LivePreviewCard
+              image={previewImage}
+              frameNumber={previewIndex + 1}
+              label="Live Preview"
+              description="Focused view for the hovered frame while you scan the wall."
+              priority
+            />
+            {secondaryPreviewImage ? (
+              <div className="hidden 2xl:block">
+                <LivePreviewCard
+                  image={secondaryPreviewImage}
+                  frameNumber={secondaryPreviewIndex! + 1}
+                  label="Next Frame"
+                  description="A second live preview makes better use of wide screens."
+                />
+              </div>
+            ) : null}
           </div>
         </aside>
       </div>
@@ -387,5 +332,96 @@ export default function PortfolioShowcase() {
         />
       ) : null}
     </>
+  );
+}
+
+function LivePreviewCard({
+  image,
+  frameNumber,
+  label,
+  description,
+  priority = false,
+}: {
+  image: (typeof portfolioImages)[number] | null;
+  frameNumber: number;
+  label: string;
+  description: string;
+  priority?: boolean;
+}) {
+  const [previewMaxHeight, setPreviewMaxHeight] = useState<number | null>(null);
+  const previewCardRef = useRef<HTMLDivElement>(null);
+  const previewFrameRef = useRef<HTMLDivElement>(null);
+  const previewFooterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previewCard = previewCardRef.current;
+    const previewFrame = previewFrameRef.current;
+    const previewFooter = previewFooterRef.current;
+
+    if (!previewCard || !previewFrame || !previewFooter) return;
+
+    const updatePreviewSize = () => {
+      const frameTop = previewFrame.getBoundingClientRect().top;
+      const footerHeight = previewFooter.getBoundingClientRect().height;
+      const cardStyles = window.getComputedStyle(previewCard);
+      const cardPaddingBottom = Number.parseFloat(cardStyles.paddingBottom) || 0;
+      const availableHeight = window.innerHeight - frameTop - footerHeight - cardPaddingBottom;
+
+      setPreviewMaxHeight(availableHeight > 0 ? availableHeight : null);
+    };
+
+    updatePreviewSize();
+
+    const resizeObserver = new ResizeObserver(updatePreviewSize);
+    resizeObserver.observe(previewCard);
+    resizeObserver.observe(previewFooter);
+
+    window.addEventListener("resize", updatePreviewSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updatePreviewSize);
+    };
+  }, [image?.src]);
+
+  return (
+    <div
+      ref={previewCardRef}
+      className="relative overflow-hidden rounded-sm border border-foreground/16 bg-[linear-gradient(170deg,#fffef9,#f5ebd8)] p-3 shadow-[0_24px_60px_rgba(25,20,14,0.28)]"
+    >
+      <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#d66538,#c63d2f,#d66538)]" />
+      <div className="mb-2 flex items-center justify-between border-b border-foreground/12 pb-2">
+        <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">{label}</span>
+        <span className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
+          {String(frameNumber).padStart(2, "0")}
+        </span>
+      </div>
+      <div
+        ref={previewFrameRef}
+        className="w-full overflow-hidden border border-foreground/12 bg-[#efe5d1] shadow-inner"
+        style={{
+          height: previewMaxHeight ? `${previewMaxHeight}px` : undefined,
+        }}
+      >
+        {image ? (
+          <div className="flex h-full w-full items-center justify-center p-4">
+            <img
+              src={getImagePath(image.src)}
+              alt=""
+              width={image.width}
+              height={image.height}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              decoding="async"
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
+        ) : null}
+      </div>
+      <div ref={previewFooterRef} className="border-t border-foreground/10 px-1 pt-4">
+        <p className="font-heading text-3xl text-foreground">{image?.title ?? "Untitled"}</p>
+        <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+      </div>
+    </div>
   );
 }
