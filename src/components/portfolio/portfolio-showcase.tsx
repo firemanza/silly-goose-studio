@@ -83,10 +83,6 @@ export default function PortfolioShowcase() {
       : filteredImages[0] ?? null;
   const previewIndex =
     hoveredIndex !== null && hoveredIndex < filteredImages.length ? hoveredIndex : 0;
-  const secondaryPreviewIndex =
-    filteredImages.length > 1 ? (previewIndex + 1) % filteredImages.length : null;
-  const secondaryPreviewImage =
-    secondaryPreviewIndex !== null ? filteredImages[secondaryPreviewIndex] : null;
 
   const featuredMobile = filteredImages[0] ?? null;
 
@@ -239,7 +235,7 @@ export default function PortfolioShowcase() {
         </div>
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(560px,620px)] lg:gap-6">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] lg:gap-6">
         <div className="relative overflow-hidden rounded-sm border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-5 shadow-[0_20px_40px_rgba(35,28,20,0.12)] sm:p-7">
           <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-accent/10 blur-2xl" />
           <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-foreground/8 blur-3xl" />
@@ -300,7 +296,7 @@ export default function PortfolioShowcase() {
         </div>
 
         <aside className="block">
-          <div className="sticky top-20 grid gap-4 2xl:grid-cols-2">
+          <div className="sticky top-20">
             <LivePreviewCard
               image={previewImage}
               frameNumber={previewIndex + 1}
@@ -308,16 +304,6 @@ export default function PortfolioShowcase() {
               description="Focused view for the hovered frame while you scan the wall."
               priority
             />
-            {secondaryPreviewImage ? (
-              <div className="hidden 2xl:block">
-                <LivePreviewCard
-                  image={secondaryPreviewImage}
-                  frameNumber={secondaryPreviewIndex! + 1}
-                  label="Next Frame"
-                  description="A second live preview makes better use of wide screens."
-                />
-              </div>
-            ) : null}
           </div>
         </aside>
       </div>
