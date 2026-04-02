@@ -125,7 +125,7 @@ export default function Hero() {
       <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(27,20,15,0.82)_0%,rgba(27,20,15,0.4)_45%,rgba(27,20,15,0.72)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(198,61,47,0.28),transparent_34%)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1800px] gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
         <div className="max-w-3xl">
           <p className="font-mono text-xs tracking-[0.2em] text-surface/80 uppercase">
             Johannesburg, South Africa

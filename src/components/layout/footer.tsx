@@ -10,7 +10,7 @@ const footerLinks = [
 export default function Footer() {
   return (
     <footer className="mt-16 border-t border-foreground/12 bg-[linear-gradient(180deg,rgba(251,247,236,0.5),rgba(233,225,208,0.85))]">
-      <div className="mx-auto w-full max-w-[1600px] px-4 py-14 sm:px-6 lg:px-8 xl:px-10">
+      <div className="mx-auto w-full max-w-[1800px] px-4 py-14 sm:px-6 lg:px-8 xl:px-10">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr] md:items-end">
           <div>
             <Link

@@ -37,7 +37,7 @@ export default function Header() {
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-3 sm:px-6 lg:px-8 xl:px-10 sm:pt-5">
       <nav
         className={cn(
-          "mx-auto w-full max-w-[1600px] rounded-[1.5rem] border transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
+          "mx-auto w-full max-w-[1800px] rounded-[1.5rem] border transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
           isScrolled
             ? "border-foreground/12 bg-surface/96 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur"
             : "border-foreground/10 bg-surface/82 backdrop-blur-sm"
