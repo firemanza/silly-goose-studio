@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { siteConfig } from "@/config/site";
 import { portfolioImages } from "@/data/portfolio";
 import { cn, getImagePath } from "@/lib/utils";
@@ -348,45 +348,8 @@ function LivePreviewCard({
   description: string;
   priority?: boolean;
 }) {
-  const [previewMaxHeight, setPreviewMaxHeight] = useState<number | null>(null);
-  const previewCardRef = useRef<HTMLDivElement>(null);
-  const previewFrameRef = useRef<HTMLDivElement>(null);
-  const previewFooterRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const previewCard = previewCardRef.current;
-    const previewFrame = previewFrameRef.current;
-    const previewFooter = previewFooterRef.current;
-
-    if (!previewCard || !previewFrame || !previewFooter) return;
-
-    const updatePreviewSize = () => {
-      const frameTop = previewFrame.getBoundingClientRect().top;
-      const footerHeight = previewFooter.getBoundingClientRect().height;
-      const cardStyles = window.getComputedStyle(previewCard);
-      const cardPaddingBottom = Number.parseFloat(cardStyles.paddingBottom) || 0;
-      const availableHeight = window.innerHeight - frameTop - footerHeight - cardPaddingBottom;
-
-      setPreviewMaxHeight(availableHeight > 0 ? availableHeight : null);
-    };
-
-    updatePreviewSize();
-
-    const resizeObserver = new ResizeObserver(updatePreviewSize);
-    resizeObserver.observe(previewCard);
-    resizeObserver.observe(previewFooter);
-
-    window.addEventListener("resize", updatePreviewSize);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updatePreviewSize);
-    };
-  }, [image?.src]);
-
   return (
     <div
-      ref={previewCardRef}
       className="relative overflow-hidden rounded-sm border border-foreground/16 bg-[linear-gradient(170deg,#fffef9,#f5ebd8)] p-3 shadow-[0_24px_60px_rgba(25,20,14,0.28)]"
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#d66538,#c63d2f,#d66538)]" />
@@ -397,10 +360,10 @@ function LivePreviewCard({
         </span>
       </div>
       <div
-        ref={previewFrameRef}
         className="w-full overflow-hidden border border-foreground/12 bg-[#efe5d1] shadow-inner"
         style={{
-          height: previewMaxHeight ? `${previewMaxHeight}px` : undefined,
+          aspectRatio: image ? `${image.width} / ${image.height}` : undefined,
+          maxHeight: "72vh",
         }}
       >
         {image ? (
@@ -418,7 +381,7 @@ function LivePreviewCard({
           </div>
         ) : null}
       </div>
-      <div ref={previewFooterRef} className="border-t border-foreground/10 px-1 pt-4">
+      <div className="border-t border-foreground/10 px-1 pt-4">
         <p className="font-heading text-3xl text-foreground">{image?.title ?? "Untitled"}</p>
         <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
       </div>
