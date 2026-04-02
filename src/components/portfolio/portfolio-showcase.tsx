@@ -91,8 +91,8 @@ export default function PortfolioShowcase() {
       return () => window.cancelIdleCallback(idleId);
     }
 
-    const timeoutId = window.setTimeout(warmRemainingImages, 300);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = globalThis.setTimeout(warmRemainingImages, 300);
+    return () => globalThis.clearTimeout(timeoutId);
   }, [filteredImages]);
 
   const previewImage =
