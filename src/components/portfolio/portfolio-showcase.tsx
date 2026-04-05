@@ -63,6 +63,7 @@ export default function PortfolioShowcase() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [mobilePreviewIndex, setMobilePreviewIndex] = useState(0);
 
   const filteredImages = useMemo(() => {
     if (activeCategory === "all") return portfolioImages;
@@ -101,13 +102,16 @@ export default function PortfolioShowcase() {
       : filteredImages[0] ?? null;
   const previewIndex =
     hoveredIndex !== null && hoveredIndex < filteredImages.length ? hoveredIndex : 0;
-
-  const featuredMobile = filteredImages[0] ?? null;
+  const mobilePreviewImage =
+    filteredImages[
+      mobilePreviewIndex < filteredImages.length ? mobilePreviewIndex : 0
+    ] ?? null;
 
   const setCategory = (slug: string) => {
     setActiveCategory(slug);
     setHoveredIndex(null);
     setSelectedIndex(null);
+    setMobilePreviewIndex(0);
   };
 
   const openLightbox = (index: number) => setSelectedIndex(index);
@@ -169,53 +173,49 @@ export default function PortfolioShowcase() {
         ))}
       </div>
 
-      <div className="space-y-6 lg:hidden">
-        <div className="relative overflow-hidden rounded-[2rem] border border-foreground/12 bg-[linear-gradient(155deg,rgba(251,247,236,0.98),rgba(236,226,205,0.95))] p-4 shadow-[0_24px_50px_rgba(35,28,20,0.14)] sm:p-5">
-          <div className="pointer-events-none absolute -right-10 -top-8 h-28 w-28 rounded-full bg-accent/12 blur-3xl" />
-          <div className="pointer-events-none absolute -left-8 bottom-0 h-24 w-24 rounded-full bg-foreground/8 blur-3xl" />
+      <div className="space-y-5 lg:hidden">
+        <div className="rounded-[1.8rem] border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-3 shadow-[0_20px_44px_rgba(35,28,20,0.12)]">
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
+              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Category</p>
+              <p className="mt-1 text-sm text-foreground">{categoryLabel(activeCategory)}</p>
+            </div>
+            <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
+              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Frames</p>
+              <p className="mt-1 text-sm text-foreground">{filteredImages.length}</p>
+            </div>
+          </div>
 
-          {featuredMobile ? (
-            <>
-              <div className="relative overflow-hidden rounded-[1.55rem] border border-foreground/12 bg-[#e9ddc7]">
-                <img
-                  src={getImagePath(featuredMobile.src)}
-                  alt={featuredMobile.alt}
-                  width={featuredMobile.width}
-                  height={featuredMobile.height}
-                  className="h-[24rem] w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,16,13,0.08)_10%,rgba(20,16,13,0.02)_40%,rgba(20,16,13,0.76)_100%)]" />
-                <div className="absolute inset-x-4 bottom-4 rounded-[1.2rem] border border-white/10 bg-black/28 px-4 py-4 backdrop-blur-sm">
-                  <p className="font-mono text-[10px] tracking-[0.22em] text-white/72 uppercase">Field Notes</p>
-                  <p className="mt-2 font-heading text-3xl text-surface">
-                    {featuredMobile.title ?? "Featured Frame"}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-surface/82">
-                    Creative on desktop, but now easier to browse on mobile.
-                  </p>
-                </div>
-              </div>
+          <LivePreviewCard
+            image={mobilePreviewImage}
+            frameNumber={mobilePreviewIndex + 1}
+            label="Live Preview"
+            description="Tap a frame below to update the preview, then open the full image."
+            priority
+            compact
+          />
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-[1.25rem] border border-foreground/10 bg-surface/70 px-4 py-4">
-                  <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">Category</p>
-                  <p className="mt-2 text-base text-foreground">{categoryLabel(activeCategory)}</p>
-                </div>
-                <div className="rounded-[1.25rem] border border-foreground/10 bg-surface/70 px-4 py-4">
-                  <p className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">Frames</p>
-                  <p className="mt-2 text-base text-foreground">{filteredImages.length}</p>
-                </div>
-              </div>
-            </>
+          {mobilePreviewImage ? (
+            <button
+              onClick={() => openLightbox(mobilePreviewIndex)}
+              className="mt-3 w-full cursor-pointer rounded-full border border-foreground bg-foreground px-4 py-3 text-center font-mono text-[10px] tracking-[0.2em] text-surface uppercase transition-colors duration-200 hover:bg-accent hover:border-accent"
+            >
+              Open Full Frame
+            </button>
           ) : null}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           {filteredImages.map((image, index) => (
             <button
               key={`${image.src}-${activeCategory}`}
-              onClick={() => openLightbox(index)}
-              className="group cursor-pointer overflow-hidden rounded-[1.5rem] border border-foreground/10 bg-[#fffaf0] text-left shadow-[0_16px_36px_rgba(35,28,20,0.1)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-[0_22px_44px_rgba(35,28,20,0.14)]"
+              onClick={() => setMobilePreviewIndex(index)}
+              className={cn(
+                "group cursor-pointer overflow-hidden rounded-[1.35rem] border bg-[#fffaf0] text-left shadow-[0_14px_28px_rgba(35,28,20,0.1)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(35,28,20,0.14)]",
+                mobilePreviewIndex === index
+                  ? "border-foreground/30 shadow-[0_18px_36px_rgba(35,28,20,0.16)]"
+                  : "border-foreground/10 hover:border-foreground/20"
+              )}
             >
               <div className="relative overflow-hidden bg-[#eadfc8]">
                 <img
@@ -226,25 +226,27 @@ export default function PortfolioShowcase() {
                   loading={index < 6 ? "eager" : "lazy"}
                   fetchPriority={index < 3 ? "high" : "auto"}
                   decoding="async"
-                  className="h-80 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                  className="aspect-[4/5] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(33,27,21,0)_48%,rgba(33,27,21,0.6)_100%)]" />
                 <span
                   className={cn(
-                    "absolute left-4 top-4 inline-flex h-2.5 w-10 rounded-full opacity-90",
+                    "absolute left-3 top-3 inline-flex h-2.5 w-9 rounded-full opacity-90",
                     categoryAccent(image.category)
                   )}
                   aria-hidden="true"
                 />
               </div>
-              <div className="flex items-start justify-between gap-3 px-4 py-4">
+              <div className="flex items-start justify-between gap-2 px-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate font-heading text-[1.85rem] leading-none text-foreground">
+                  <p className="truncate font-heading text-[1.45rem] leading-none text-foreground">
                     {image.title ?? `Frame ${String(index + 1).padStart(2, "0")}`}
                   </p>
-                  <p className="mt-2 text-sm text-muted">Tap for the full frame</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {mobilePreviewIndex === index ? "Previewing now" : "Tap to preview"}
+                  </p>
                 </div>
-                <span className="shrink-0 rounded-full border border-foreground/10 px-3 py-2 font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+                <span className="shrink-0 rounded-full border border-foreground/10 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
@@ -253,7 +255,7 @@ export default function PortfolioShowcase() {
         </div>
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] lg:gap-6">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,540px)] lg:gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(460px,580px)]">
         <div className="relative overflow-hidden rounded-sm border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-5 shadow-[0_20px_40px_rgba(35,28,20,0.12)] sm:p-7">
           <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-accent/10 blur-2xl" />
           <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-foreground/8 blur-3xl" />
@@ -268,7 +270,7 @@ export default function PortfolioShowcase() {
                 onMouseEnter={() => setHoveredIndex(index)}
                 onFocus={() => setHoveredIndex(index)}
                 className={cn(
-                  "group relative cursor-pointer overflow-visible bg-[#fffdf8] p-3 pb-7 text-left shadow-[0_16px_28px_rgba(35,28,20,0.16)] transition-[transform,box-shadow,filter] duration-400 ease-out hover:-translate-y-0.5 hover:shadow-[0_20px_34px_rgba(35,28,20,0.2)]",
+                  "group relative cursor-pointer overflow-visible bg-[#fffdf8] p-3 pb-6 text-left shadow-[0_16px_28px_rgba(35,28,20,0.16)] transition-[transform,box-shadow,filter] duration-400 ease-out hover:-translate-y-0.5 hover:shadow-[0_20px_34px_rgba(35,28,20,0.2)]",
                   frameWidth(image.width, image.height),
                   tiltPattern[index % tiltPattern.length],
                   offsetPattern[index % offsetPattern.length],
@@ -345,12 +347,14 @@ function LivePreviewCard({
   label,
   description,
   priority = false,
+  compact = false,
 }: {
   image: (typeof portfolioImages)[number] | null;
   frameNumber: number;
   label: string;
   description: string;
   priority?: boolean;
+  compact?: boolean;
 }) {
   const [displayedImage, setDisplayedImage] = useState(image);
 
@@ -367,7 +371,10 @@ function LivePreviewCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-sm border border-foreground/16 bg-[linear-gradient(170deg,#fffef9,#f5ebd8)] p-3 shadow-[0_24px_60px_rgba(25,20,14,0.28)]"
+      className={cn(
+        "relative overflow-hidden border border-foreground/16 bg-[linear-gradient(170deg,#fffef9,#f5ebd8)] shadow-[0_24px_60px_rgba(25,20,14,0.28)]",
+        compact ? "rounded-[1.4rem] p-3" : "rounded-sm p-3"
+      )}
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#d66538,#c63d2f,#d66538)]" />
       <div className="mb-2 flex items-center justify-between border-b border-foreground/12 pb-2">
@@ -380,11 +387,11 @@ function LivePreviewCard({
         className="w-full overflow-hidden border border-foreground/12 bg-[#efe5d1] shadow-inner"
         style={{
           aspectRatio: activeImage ? `${activeImage.width} / ${activeImage.height}` : undefined,
-          maxHeight: "72vh",
+          maxHeight: compact ? "52vh" : "72vh",
         }}
       >
         {activeImage ? (
-          <div className="flex h-full w-full items-center justify-center p-4">
+          <div className={cn("flex h-full w-full items-center justify-center", compact ? "p-3" : "p-4")}>
             <img
               src={getImagePath(activeImage.src)}
               alt=""
@@ -398,9 +405,13 @@ function LivePreviewCard({
           </div>
         ) : null}
       </div>
-      <div className="border-t border-foreground/10 px-1 pt-4">
-        <p className="font-heading text-3xl text-foreground">{activeImage?.title ?? "Untitled"}</p>
-        <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+      <div className={cn("border-t border-foreground/10 px-1", compact ? "pt-3" : "pt-4")}>
+        <p className={cn("font-heading text-foreground", compact ? "text-[2rem]" : "text-3xl")}>
+          {activeImage?.title ?? "Untitled"}
+        </p>
+        <p className={cn("text-muted", compact ? "mt-1 text-[13px] leading-5" : "mt-2 text-sm leading-6")}>
+          {description}
+        </p>
       </div>
     </div>
   );
