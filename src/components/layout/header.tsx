@@ -27,9 +27,32 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
-    return () => {
+    if (!isMobileMenuOpen) {
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      return;
+    }
+
+    const scrollY = window.scrollY;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      const lockedScrollY = Number.parseInt(document.body.style.top || "0", 10) * -1;
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      if (lockedScrollY > 0) {
+        window.scrollTo(0, lockedScrollY);
+      }
     };
   }, [isMobileMenuOpen]);
 

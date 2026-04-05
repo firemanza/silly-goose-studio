@@ -63,7 +63,6 @@ export default function PortfolioShowcase() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [mobilePreviewIndex, setMobilePreviewIndex] = useState(0);
 
   const filteredImages = useMemo(() => {
     if (activeCategory === "all") return portfolioImages;
@@ -102,16 +101,11 @@ export default function PortfolioShowcase() {
       : filteredImages[0] ?? null;
   const previewIndex =
     hoveredIndex !== null && hoveredIndex < filteredImages.length ? hoveredIndex : 0;
-  const mobilePreviewImage =
-    filteredImages[
-      mobilePreviewIndex < filteredImages.length ? mobilePreviewIndex : 0
-    ] ?? null;
 
   const setCategory = (slug: string) => {
     setActiveCategory(slug);
     setHoveredIndex(null);
     setSelectedIndex(null);
-    setMobilePreviewIndex(0);
   };
 
   const openLightbox = (index: number) => setSelectedIndex(index);
@@ -174,50 +168,35 @@ export default function PortfolioShowcase() {
       </div>
 
       <div className="space-y-5 lg:hidden">
-        <div className="rounded-[1.8rem] border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-3 shadow-[0_20px_44px_rgba(35,28,20,0.12)]">
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Category</p>
-              <p className="mt-1 text-sm text-foreground">{categoryLabel(activeCategory)}</p>
-            </div>
-            <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Frames</p>
-              <p className="mt-1 text-sm text-foreground">{filteredImages.length}</p>
-            </div>
+        <div className="grid grid-cols-2 gap-3 rounded-[1.8rem] border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-3 shadow-[0_20px_44px_rgba(35,28,20,0.12)]">
+          <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
+            <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Category</p>
+            <p className="mt-1 text-sm text-foreground">{categoryLabel(activeCategory)}</p>
           </div>
-
-          <LivePreviewCard
-            image={mobilePreviewImage}
-            frameNumber={mobilePreviewIndex + 1}
-            label="Live Preview"
-            description="Tap a frame below to update the preview, then open the full image."
-            priority
-            compact
-          />
-
-          {mobilePreviewImage ? (
-            <button
-              onClick={() => openLightbox(mobilePreviewIndex)}
-              className="mt-3 w-full cursor-pointer rounded-full border border-foreground bg-foreground px-4 py-3 text-center font-mono text-[10px] tracking-[0.2em] text-surface uppercase transition-colors duration-200 hover:bg-accent hover:border-accent"
-            >
-              Open Full Frame
-            </button>
-          ) : null}
+          <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
+            <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Frames</p>
+            <p className="mt-1 text-sm text-foreground">{filteredImages.length}</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           {filteredImages.map((image, index) => (
             <button
               key={`${image.src}-${activeCategory}`}
-              onClick={() => setMobilePreviewIndex(index)}
+              onClick={() => openLightbox(index)}
               className={cn(
-                "group cursor-pointer overflow-hidden rounded-[1.35rem] border bg-[#fffaf0] text-left shadow-[0_14px_28px_rgba(35,28,20,0.1)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(35,28,20,0.14)]",
-                mobilePreviewIndex === index
-                  ? "border-foreground/30 shadow-[0_18px_36px_rgba(35,28,20,0.16)]"
-                  : "border-foreground/10 hover:border-foreground/20"
+                "group relative cursor-pointer overflow-visible bg-[#fffdf8] px-2.5 pb-4 pt-2.5 text-left shadow-[0_14px_24px_rgba(35,28,20,0.14)] transition-[transform,box-shadow,filter] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_30px_rgba(35,28,20,0.18)]",
+                "hover:ring-2 hover:ring-accent/25"
               )}
+              style={{ rotate: `${index % 2 === 0 ? -1.2 : 1.1}deg` }}
             >
-              <div className="relative overflow-hidden bg-[#eadfc8]">
+              <span
+                className={cn(
+                  "pointer-events-none absolute z-10 h-4 w-12 rounded-[2px] border border-amber-200/70 bg-[linear-gradient(180deg,rgba(245,238,215,0.95),rgba(235,224,193,0.9))] shadow-sm",
+                  index % 3 === 0 ? "left-[14%] -top-2 -rotate-2" : index % 3 === 1 ? "right-[14%] -top-2 rotate-2" : "left-[38%] -top-2 -rotate-1"
+                )}
+              />
+              <div className="relative overflow-hidden border border-foreground/10 bg-[#eadfc8]">
                 <img
                   src={getImagePath(image.src)}
                   alt={image.alt}
@@ -228,7 +207,6 @@ export default function PortfolioShowcase() {
                   decoding="async"
                   className="aspect-[4/5] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(33,27,21,0)_48%,rgba(33,27,21,0.6)_100%)]" />
                 <span
                   className={cn(
                     "absolute left-3 top-3 inline-flex h-2.5 w-9 rounded-full opacity-90",
@@ -237,25 +215,24 @@ export default function PortfolioShowcase() {
                   aria-hidden="true"
                 />
               </div>
-              <div className="flex items-start justify-between gap-2 px-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-heading text-[1.45rem] leading-none text-foreground">
-                    {image.title ?? `Frame ${String(index + 1).padStart(2, "0")}`}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    {mobilePreviewIndex === index ? "Previewing now" : "Tap to preview"}
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full border border-foreground/10 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+              <div className="flex items-center justify-between gap-2 px-1 pt-3">
+                <p className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">
+                  Frame {String(index + 1).padStart(2, "0")}
+                </p>
+                <span
+                  className={cn(
+                    "h-1.5 w-7 rounded-full opacity-85",
+                    categoryAccent(image.category)
+                  )}
+                  aria-hidden="true"
+                />
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,540px)] lg:gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(460px,580px)]">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,0.82fr)_minmax(520px,680px)] lg:gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(580px,760px)]">
         <div className="relative overflow-hidden rounded-sm border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-5 shadow-[0_20px_40px_rgba(35,28,20,0.12)] sm:p-7">
           <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-accent/10 blur-2xl" />
           <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-foreground/8 blur-3xl" />
@@ -352,7 +329,7 @@ function LivePreviewCard({
   image: (typeof portfolioImages)[number] | null;
   frameNumber: number;
   label: string;
-  description: string;
+  description?: string;
   priority?: boolean;
   compact?: boolean;
 }) {
@@ -387,7 +364,7 @@ function LivePreviewCard({
         className="w-full overflow-hidden border border-foreground/12 bg-[#efe5d1] shadow-inner"
         style={{
           aspectRatio: activeImage ? `${activeImage.width} / ${activeImage.height}` : undefined,
-          maxHeight: compact ? "52vh" : "72vh",
+          maxHeight: compact ? "52vh" : "78vh",
         }}
       >
         {activeImage ? (
@@ -409,9 +386,11 @@ function LivePreviewCard({
         <p className={cn("font-heading text-foreground", compact ? "text-[2rem]" : "text-3xl")}>
           {activeImage?.title ?? "Untitled"}
         </p>
-        <p className={cn("text-muted", compact ? "mt-1 text-[13px] leading-5" : "mt-2 text-sm leading-6")}>
-          {description}
-        </p>
+        {description ? (
+          <p className={cn("text-muted", compact ? "mt-1 text-[13px] leading-5" : "mt-2 text-sm leading-6")}>
+            {description}
+          </p>
+        ) : null}
       </div>
     </div>
   );
