@@ -226,14 +226,6 @@ export const portfolioImages: PortfolioImage[] = [
     title: "Deep Sleep",
   },
   {
-    src: "/images/wildlife/crocodile-resting.jpg",
-    alt: "Crocodile lying flat on the ground in dark moody enclosure lighting",
-    category: "wildlife",
-    width: 2773,
-    height: 4160,
-    title: "Still Waters",
-  },
-  {
     src: "/images/wildlife/crocodile-eye-detail.jpg",
     alt: "Close-up of crocodile head showing intricate scale patterns and piercing reptilian eye",
     category: "wildlife",
