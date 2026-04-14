@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LibraryClient from "./library-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function LibraryPage() {
   const supabase = await createClient();
   const {

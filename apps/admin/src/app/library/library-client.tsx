@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Database } from "@shared/supabase/database.types";
 import { createClient } from "@/lib/supabase/client";
@@ -27,6 +27,13 @@ function statusPill(status: string) {
   if (status === "published") return "bg-emerald-100 text-emerald-800 border-emerald-200";
   if (status === "archived") return "bg-amber-100 text-amber-800 border-amber-200";
   return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function formatBytes(bytes: number | null | undefined) {
+  if (!bytes || bytes <= 0) return "Size unavailable";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 async function imageFromFile(file: File) {
@@ -90,6 +97,7 @@ export default function LibraryClient({
 }) {
   const router = useRouter();
   const supabase = createClient();
+  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(initialPhotos[0]?.id ?? null);
@@ -110,20 +118,39 @@ export default function LibraryClient({
     (initialPhotos[0]?.status as "draft" | "published" | "archived" | undefined) ?? "draft"
   );
 
+  useEffect(() => {
+    setPhotos(initialPhotos);
+  }, [initialPhotos]);
+
+  useEffect(() => {
+    if (!photos.length) {
+      setSelectedId(null);
+      return;
+    }
+
+    if (selectedId && photos.some((photo) => photo.id === selectedId)) {
+      return;
+    }
+
+    const nextSelected = photos[0];
+    setSelectedId(nextSelected.id);
+    syncEditor(nextSelected);
+  }, [photos, selectedId]);
+
   const filteredPhotos = useMemo(() => {
-    return initialPhotos.filter((photo) => {
+    return photos.filter((photo) => {
       const statusMatches = statusFilter === "all" || photo.status === statusFilter;
       const categoryMatches = categoryFilter === "all" || photo.category_slug === categoryFilter;
       return statusMatches && categoryMatches;
     });
-  }, [categoryFilter, initialPhotos, statusFilter]);
+  }, [categoryFilter, photos, statusFilter]);
 
   const selectedPhoto = useMemo(
     () =>
       filteredPhotos.find((photo) => photo.id === selectedId) ??
-      initialPhotos.find((photo) => photo.id === selectedId) ??
+      photos.find((photo) => photo.id === selectedId) ??
       null,
-    [filteredPhotos, initialPhotos, selectedId]
+    [filteredPhotos, photos, selectedId]
   );
 
   function syncEditor(photo: Photo | null) {
@@ -132,6 +159,15 @@ export default function LibraryClient({
     setEditCategory(photo.category_slug);
     setEditPhotographer(photo.photographer_id ?? currentUserId);
     setEditStatus(photo.status as "draft" | "published" | "archived");
+  }
+
+  function upsertPhoto(nextPhoto: Photo) {
+    setPhotos((current) => {
+      const remaining = current.filter((photo) => photo.id !== nextPhoto.id);
+      return [nextPhoto, ...remaining].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
   }
 
   async function refresh() {
@@ -185,31 +221,41 @@ export default function LibraryClient({
         throw new Error(originalError?.message || displayError?.message || thumbError?.message);
       }
 
-      const { error: insertError } = await supabase.from("photos").insert({
-        title: uploadTitle.trim(),
-        alt_text: uploadTitle.trim(),
-        caption: null,
-        category_slug: uploadCategory,
-        photographer_id: uploadPhotographer,
-        created_by: currentUserId,
-        updated_by: currentUserId,
-        status: uploadStatus,
-        published_at: uploadStatus === "published" ? new Date().toISOString() : null,
-        display_path: displayPath,
-        thumbnail_path: thumbPath,
-        original_path: originalPath,
-        width,
-        height,
-      });
+      const { data: insertedPhoto, error: insertError } = await supabase
+        .from("photos")
+        .insert({
+          title: uploadTitle.trim(),
+          alt_text: uploadTitle.trim(),
+          caption: null,
+          category_slug: uploadCategory,
+          photographer_id: uploadPhotographer,
+          created_by: currentUserId,
+          updated_by: currentUserId,
+          status: uploadStatus,
+          published_at: uploadStatus === "published" ? new Date().toISOString() : null,
+          display_path: displayPath,
+          thumbnail_path: thumbPath,
+          original_path: originalPath,
+          original_size_bytes: uploadFile.size,
+          display_size_bytes: displayBlob.size,
+          thumbnail_size_bytes: thumbBlob.size,
+          width,
+          height,
+        })
+        .select("*")
+        .single();
 
-      if (insertError) {
-        throw new Error(insertError.message);
+      if (insertError || !insertedPhoto) {
+        throw new Error(insertError?.message || "Upload failed.");
       }
 
       setNotice("Photo uploaded.");
       setUploadFile(null);
       setUploadTitle("");
-      await refresh();
+      upsertPhoto(insertedPhoto);
+      setSelectedId(insertedPhoto.id);
+      syncEditor(insertedPhoto);
+      refresh();
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
     } finally {
@@ -226,7 +272,7 @@ export default function LibraryClient({
 
     const becamePublished = editStatus === "published" && !selectedPhoto.published_at;
 
-    const { error: updateError } = await supabase
+    const { data: updatedPhoto, error: updateError } = await supabase
       .from("photos")
       .update({
         title: editTitle.trim(),
@@ -243,16 +289,20 @@ export default function LibraryClient({
             : null,
         updated_by: currentUserId,
       })
-      .eq("id", selectedPhoto.id);
+      .eq("id", selectedPhoto.id)
+      .select("*")
+      .single();
 
-    if (updateError) {
-      setError(updateError.message);
+    if (updateError || !updatedPhoto) {
+      setError(updateError?.message || "Update failed.");
       setBusyAction(null);
       return;
     }
 
     setNotice("Photo updated.");
-    await refresh();
+    upsertPhoto(updatedPhoto);
+    syncEditor(updatedPhoto);
+    refresh();
     setBusyAction(null);
   }
 
@@ -263,23 +313,27 @@ export default function LibraryClient({
     setError(null);
     setNotice(null);
 
-    const { error: updateError } = await supabase
+    const { data: updatedPhoto, error: updateError } = await supabase
       .from("photos")
       .update({
         status: "archived",
         published_at: null,
         updated_by: currentUserId,
       })
-      .eq("id", selectedPhoto.id);
+      .eq("id", selectedPhoto.id)
+      .select("*")
+      .single();
 
-    if (updateError) {
-      setError(updateError.message);
+    if (updateError || !updatedPhoto) {
+      setError(updateError?.message || "Archive failed.");
       setBusyAction(null);
       return;
     }
 
     setNotice("Photo archived.");
-    await refresh();
+    upsertPhoto(updatedPhoto);
+    syncEditor(updatedPhoto);
+    refresh();
     setBusyAction(null);
   }
 
@@ -316,14 +370,15 @@ export default function LibraryClient({
     }
 
     setNotice("Photo deleted.");
+    setPhotos((current) => current.filter((photo) => photo.id !== selectedPhoto.id));
     setSelectedId(null);
-    await refresh();
+    refresh();
     setBusyAction(null);
   }
 
-  const draftCount = initialPhotos.filter((photo) => photo.status === "draft").length;
-  const publishedCount = initialPhotos.filter((photo) => photo.status === "published").length;
-  const archivedCount = initialPhotos.filter((photo) => photo.status === "archived").length;
+  const draftCount = photos.filter((photo) => photo.status === "draft").length;
+  const publishedCount = photos.filter((photo) => photo.status === "published").length;
+  const archivedCount = photos.filter((photo) => photo.status === "archived").length;
 
   return (
     <main className="min-h-screen p-4 sm:p-6">
@@ -347,7 +402,7 @@ export default function LibraryClient({
                 <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
                   Total
                 </p>
-                <p className="mt-4 text-3xl font-semibold">{initialPhotos.length}</p>
+                <p className="mt-4 text-3xl font-semibold">{photos.length}</p>
               </div>
               <div className="rounded-[1.6rem] border bg-[color:var(--color-surface)] p-4">
                 <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
@@ -628,7 +683,7 @@ export default function LibraryClient({
                       <img
                         src={publicUrl(selectedPhoto.display_bucket, selectedPhoto.display_path)!}
                         alt={selectedPhoto.alt_text ?? selectedPhoto.title}
-                        className="max-h-[360px] w-full object-cover"
+                        className="max-h-[360px] w-full object-contain"
                       />
                     ) : null}
                   </div>
@@ -711,6 +766,13 @@ export default function LibraryClient({
                       : "Dimensions pending"}
                     {" · "}
                     Last updated {formatDate(selectedPhoto.updated_at)}
+                  </div>
+                  <div className="rounded-[1.4rem] border bg-[color:var(--color-surface)] px-4 py-3 text-sm text-[color:var(--color-muted)]">
+                    {`Original ${formatBytes(selectedPhoto.original_size_bytes)}`}
+                    {" · "}
+                    {`Web ${formatBytes(selectedPhoto.display_size_bytes)}`}
+                    {" · "}
+                    {`Thumb ${formatBytes(selectedPhoto.thumbnail_size_bytes)}`}
                   </div>
                 </div>
               ) : (
