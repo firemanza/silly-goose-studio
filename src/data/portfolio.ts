@@ -5,6 +5,9 @@ export interface PortfolioImage {
   width: number;
   height: number;
   title?: string;
+  thumbnailSrc?: string;
+  displaySrc?: string;
+  fullSrc?: string;
 }
 
 export const portfolioImages: PortfolioImage[] = [

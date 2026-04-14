@@ -114,14 +114,14 @@ export default function PortfolioShowcase({
     preloadBatch.forEach((image) => {
       const preloader = new window.Image();
       preloader.decoding = "async";
-      preloader.src = getImagePath(image.src);
+      preloader.src = getImagePath(image.thumbnailSrc ?? image.src);
     });
 
     const warmRemainingImages = () => {
       filteredImages.slice(18).forEach((image) => {
         const preloader = new window.Image();
         preloader.decoding = "async";
-        preloader.src = getImagePath(image.src);
+        preloader.src = getImagePath(image.thumbnailSrc ?? image.src);
       });
     };
 
@@ -233,7 +233,7 @@ export default function PortfolioShowcase({
               />
               <div className="relative overflow-hidden border border-foreground/10 bg-[#eadfc8]">
                 <img
-                  src={getImagePath(image.src)}
+                  src={getImagePath(image.thumbnailSrc ?? image.src)}
                   alt={image.alt}
                   width={image.width}
                   height={image.height}
@@ -296,7 +296,7 @@ export default function PortfolioShowcase({
                   )}
                 >
                   <img
-                    src={getImagePath(image.src)}
+                    src={getImagePath(image.thumbnailSrc ?? image.src)}
                     alt={image.alt}
                     width={image.width}
                     height={image.height}

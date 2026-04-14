@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import type { PortfolioImage } from "@/data/portfolio";
 import { getImagePath } from "@/lib/utils";
 
@@ -21,6 +21,23 @@ export default function Lightbox({
   onPrev,
 }: LightboxProps) {
   const current = images[currentIndex];
+  const [showFullResolution, setShowFullResolution] = useState(false);
+
+  useEffect(() => {
+    setShowFullResolution(false);
+  }, [currentIndex]);
+
+  const previewSrc = useMemo(() => {
+    if (!current) return null;
+    return current.displaySrc ?? current.src;
+  }, [current]);
+
+  const fullSrc = useMemo(() => {
+    if (!current) return null;
+    return current.fullSrc ?? current.displaySrc ?? current.src;
+  }, [current]);
+
+  const canShowFullResolution = Boolean(fullSrc && previewSrc && fullSrc !== previewSrc);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -95,11 +112,29 @@ export default function Lightbox({
       </button>
 
       <div className="relative max-h-[86vh] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
-        <img src={getImagePath(current.src)} alt={current.alt} className="max-h-[86vh] max-w-[92vw] rounded-sm object-contain" />
+        <img
+          src={getImagePath(showFullResolution ? fullSrc ?? current.src : previewSrc ?? current.src)}
+          alt={current.alt}
+          className="max-h-[86vh] max-w-[92vw] rounded-sm object-contain"
+        />
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-sm border border-surface/25 px-3 py-1 text-xs tracking-[0.1em] text-surface/80 uppercase">
-        {currentIndex + 1} / {images.length}
+      <div className="absolute bottom-16 left-1/2 flex -translate-x-1/2 items-center gap-3">
+        <div className="rounded-sm border border-surface/25 px-3 py-1 text-xs tracking-[0.1em] text-surface/80 uppercase">
+          {currentIndex + 1} / {images.length}
+        </div>
+        {canShowFullResolution ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFullResolution((value) => !value);
+            }}
+            className="rounded-sm border border-surface/25 px-3 py-1 text-xs tracking-[0.1em] text-surface/85 uppercase transition-colors hover:border-surface/50 hover:text-surface"
+          >
+            {showFullResolution ? "Show Web Size" : "Load Full Resolution"}
+          </button>
+        ) : null}
       </div>
     </div>
   );

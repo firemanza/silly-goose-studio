@@ -435,6 +435,8 @@ export default function LibraryClient({
                 const photographer = photographers.find((item) => item.id === photo.photographer_id);
                 const category = categories.find((item) => item.slug === photo.category_slug);
                 const preview = publicUrl(photo.thumbnail_bucket, photo.thumbnail_path || photo.display_path);
+                const aspectRatio =
+                  photo.width && photo.height ? `${photo.width} / ${photo.height}` : "4 / 3";
 
                 return (
                   <button
@@ -449,10 +451,17 @@ export default function LibraryClient({
                       selectedId === photo.id && "ring-2 ring-[color:var(--color-accent)]"
                     )}
                   >
-                    <div className="aspect-[4/3] overflow-hidden bg-[color:var(--color-panel)]">
+                    <div
+                      className="overflow-hidden bg-[color:var(--color-panel)]"
+                      style={{ aspectRatio }}
+                    >
                       {preview ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={preview} alt={photo.alt_text ?? photo.title} className="h-full w-full object-cover" />
+                        <img
+                          src={preview}
+                          alt={photo.alt_text ?? photo.title}
+                          className="h-full w-full object-contain"
+                        />
                       ) : (
                         <div className="flex h-full items-center justify-center text-sm text-[color:var(--color-muted)]">
                           No preview

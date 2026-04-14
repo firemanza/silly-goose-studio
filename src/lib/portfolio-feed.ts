@@ -29,7 +29,9 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
       supabase.from("categories").select("slug, label, sort_order").eq("is_active", true).order("sort_order"),
       supabase
         .from("photos")
-        .select("title, alt_text, category_slug, width, height, display_bucket, display_path")
+        .select(
+          "title, alt_text, category_slug, width, height, thumbnail_bucket, thumbnail_path, display_bucket, display_path, original_bucket, original_path"
+        )
         .eq("status", "published")
         .order("sort_order", { ascending: false })
         .order("published_at", { ascending: false }),
@@ -56,6 +58,15 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
       width: photo.width ?? 2400,
       height: photo.height ?? 1600,
       title: photo.title,
+      thumbnailSrc: getSupabasePublicFileUrl(
+        photo.thumbnail_bucket,
+        photo.thumbnail_path ?? photo.display_path
+      ),
+      displaySrc: getSupabasePublicFileUrl(photo.display_bucket, photo.display_path),
+      fullSrc: getSupabasePublicFileUrl(
+        photo.original_bucket,
+        photo.original_path ?? photo.display_path
+      ),
     })),
     source: "supabase",
   };
