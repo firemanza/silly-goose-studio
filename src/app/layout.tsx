@@ -3,6 +3,7 @@ import { Alegreya_Sans, Cormorant_Garamond } from "next/font/google";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import JsonLd from "@/components/seo/json-ld";
+import ScrollJump from "@/components/ui/scroll-jump";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
         </a>
         <Header />
         <main id="main-content">{children}</main>
+        <ScrollJump />
         <Footer />
       </body>
     </html>
