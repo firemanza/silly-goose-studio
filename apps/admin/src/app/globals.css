@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #f3efe5;
+  --color-surface: #fbf7ee;
+  --color-panel: #f7f1e4;
+  --color-ink: #18161a;
+  --color-muted: #6c655d;
+  --color-border: rgba(24, 22, 26, 0.12);
+  --color-accent: #c14e28;
+  --color-accent-soft: #e8b48d;
+  --color-success: #215f4b;
+  --color-warning: #8d5717;
+  --color-info: #0d5b8f;
+}
+
+@layer base {
+  html {
+    background: var(--color-background);
+    color: var(--color-ink);
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(193, 78, 40, 0.12), transparent 28%),
+      linear-gradient(180deg, #f8f3e9 0%, #f2eddf 45%, #ece5d8 100%);
+    color: var(--color-ink);
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-accent) 75%, white);
+    outline-offset: 2px;
+  }
+}

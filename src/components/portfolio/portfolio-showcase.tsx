@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { siteConfig } from "@/config/site";
-import { portfolioImages } from "@/data/portfolio";
+import type { PortfolioImage } from "@/data/portfolio";
+import type { PortfolioCategory } from "@/lib/portfolio-feed";
 import { cn, getImagePath } from "@/lib/utils";
 import Lightbox from "@/components/portfolio/lightbox";
 
@@ -53,6 +53,7 @@ function categoryAccent(category: string) {
   if (category === "wildlife") return "bg-emerald-200";
   if (category === "portraits") return "bg-amber-200";
   if (category === "pets") return "bg-rose-200";
+  if (category === "motorsport") return "bg-sky-200";
   return "bg-stone-200";
 }
 
@@ -75,25 +76,37 @@ function categoryFilterStyle(category: string, isActive: boolean) {
       : "border-rose-200 bg-rose-100/70 text-foreground/75 hover:border-rose-400 hover:bg-rose-200 hover:text-foreground";
   }
 
+  if (category === "motorsport") {
+    return isActive
+      ? "border-sky-500/60 bg-sky-200 text-foreground shadow-[0_8px_18px_rgba(3,105,161,0.12)]"
+      : "border-sky-200 bg-sky-100/70 text-foreground/75 hover:border-sky-400 hover:bg-sky-200 hover:text-foreground";
+  }
+
   return isActive
     ? "border-stone-500/55 bg-stone-200 text-foreground shadow-[0_8px_18px_rgba(68,64,60,0.12)]"
     : "border-stone-200 bg-stone-100/75 text-foreground/75 hover:border-stone-400 hover:bg-stone-200 hover:text-foreground";
 }
 
-function categoryLabel(slug: string) {
+function categoryLabel(slug: string, categories: PortfolioCategory[]) {
   if (slug === "all") return "All Work";
-  return siteConfig.categories.find((category) => category.slug === slug)?.label ?? slug;
+  return categories.find((category) => category.slug === slug)?.label ?? slug;
 }
 
-export default function PortfolioShowcase() {
+export default function PortfolioShowcase({
+  images,
+  categories,
+}: {
+  images: PortfolioImage[];
+  categories: PortfolioCategory[];
+}) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const filteredImages = useMemo(() => {
-    if (activeCategory === "all") return portfolioImages;
-    return portfolioImages.filter((image) => image.category === activeCategory);
-  }, [activeCategory]);
+    if (activeCategory === "all") return images;
+    return images.filter((image) => image.category === activeCategory);
+  }, [activeCategory, images]);
 
   useEffect(() => {
     const preloadBatch = filteredImages.slice(0, 18);
@@ -175,7 +188,7 @@ export default function PortfolioShowcase() {
         >
           All Work
         </button>
-        {siteConfig.categories.map((category) => (
+        {categories.map((category) => (
           <button
             key={category.slug}
             onClick={() => setCategory(category.slug)}
@@ -193,7 +206,7 @@ export default function PortfolioShowcase() {
         <div className="grid grid-cols-2 gap-3 rounded-[1.8rem] border border-foreground/12 bg-[linear-gradient(150deg,rgba(250,245,234,0.98),rgba(236,226,205,0.95))] p-3 shadow-[0_20px_44px_rgba(35,28,20,0.12)]">
           <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
             <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Category</p>
-            <p className="mt-1 text-sm text-foreground">{categoryLabel(activeCategory)}</p>
+            <p className="mt-1 text-sm text-foreground">{categoryLabel(activeCategory, categories)}</p>
           </div>
           <div className="rounded-[1.15rem] border border-foreground/10 bg-surface/78 px-4 py-3">
             <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Frames</p>
@@ -339,7 +352,7 @@ function LivePreviewCard({
   priority = false,
   compact = false,
 }: {
-  image: (typeof portfolioImages)[number] | null;
+  image: PortfolioImage | null;
   frameNumber: number;
   label: string;
   priority?: boolean;

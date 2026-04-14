@@ -9,6 +9,7 @@ const genreImages: Record<string, string> = {
   wildlife: "/images/wildlife/wildlife-cover.jpg",
   portraits: "/images/portraits/portraits-cover.jpg",
   pets: "/images/pets/pets-cover.jpg",
+  motorsport: "/images/motorsport/motorsport-cover.jpg",
 };
 
 export default function GenreGrid() {
@@ -22,7 +23,7 @@ export default function GenreGrid() {
           />
         </AnimatedSection>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {siteConfig.categories.map((category, index) => (
             <AnimatedSection key={category.slug} animation="scale-in" delay={index * 90}>
               <Link

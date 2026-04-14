@@ -23,6 +23,7 @@ export const siteConfig = {
     { slug: "wildlife", label: "Wildlife & Nature" },
     { slug: "portraits", label: "Portraits" },
     { slug: "pets", label: "Pets" },
+    { slug: "motorsport", label: "Motorsport" },
   ],
 } as const;
 

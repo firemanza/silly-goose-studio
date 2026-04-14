@@ -5,6 +5,10 @@ export function getBasePath(): string {
 }
 
 export function getImagePath(path: string): string {
+  if (/^(https?:)?\/\//.test(path)) {
+    return path;
+  }
+
   return `${getBasePath()}${path}`;
 }
 
