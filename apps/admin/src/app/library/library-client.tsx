@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Database } from "@shared/supabase/database.types";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatDate, slugify } from "@/lib/utils";
@@ -56,7 +55,6 @@ export default function LibraryClient({
   categories: Category[];
   photographers: Photographer[];
 }) {
-  const router = useRouter();
   const supabase = createClient();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -142,10 +140,6 @@ export default function LibraryClient({
     });
   }
 
-  async function refresh() {
-    router.refresh();
-  }
-
   async function sourceBlobForPhoto(photo: Photo) {
     if (photo.original_path && photo.original_bucket !== "external") {
       const { data, error } = await supabase.storage.from(photo.original_bucket).download(photo.original_path);
@@ -175,8 +169,7 @@ export default function LibraryClient({
   async function handleSignOut() {
     setBusyAction("signout");
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   }
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
@@ -272,7 +265,6 @@ export default function LibraryClient({
       upsertPhoto(insertedPhoto);
       setSelectedId(insertedPhoto.id);
       syncEditor(insertedPhoto);
-      refresh();
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
     } finally {
@@ -319,7 +311,6 @@ export default function LibraryClient({
     setNotice("Photo updated.");
     upsertPhoto(updatedPhoto);
     syncEditor(updatedPhoto);
-    refresh();
     setBusyAction(null);
   }
 
@@ -350,7 +341,6 @@ export default function LibraryClient({
     setNotice("Photo archived.");
     upsertPhoto(updatedPhoto);
     syncEditor(updatedPhoto);
-    refresh();
     setBusyAction(null);
   }
 
@@ -430,7 +420,6 @@ export default function LibraryClient({
       setNotice("Public images rebuilt with watermark.");
       upsertPhoto(updatedPhoto);
       syncEditor(updatedPhoto);
-      refresh();
     } catch (rebuildError) {
       setError(rebuildError instanceof Error ? rebuildError.message : "Watermark rebuild failed.");
     } finally {
@@ -473,7 +462,6 @@ export default function LibraryClient({
     setNotice("Photo deleted.");
     setPhotos((current) => current.filter((photo) => photo.id !== selectedPhoto.id));
     setSelectedId(null);
-    refresh();
     setBusyAction(null);
   }
 
