@@ -33,8 +33,9 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
           "title, alt_text, category_slug, width, height, thumbnail_bucket, thumbnail_path, display_bucket, display_path, original_bucket, original_path, watermark_position"
         )
         .eq("status", "published")
-        .order("sort_order", { ascending: false })
-        .order("published_at", { ascending: false }),
+        .order("published_at", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .order("sort_order", { ascending: false }),
     ]);
 
   if (categoryError || photoError || !photoRows?.length) {

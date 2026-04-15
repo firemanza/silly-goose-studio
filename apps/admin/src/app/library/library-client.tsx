@@ -18,8 +18,51 @@ type Photographer = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
   "id" | "email" | "display_name"
 >;
+type SiteContentValue = Database["public"]["Tables"]["site_content"]["Row"]["value"];
 
 type StatusFilter = "all" | "draft" | "published" | "archived";
+
+type AboutContentForm = {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  paragraphs: string;
+  primaryImage: string;
+  secondaryImage: string;
+  secondaryCaption: string;
+  panelTitle: string;
+  panelBody: string;
+};
+
+function normalizeAboutContent(value: SiteContentValue | null): AboutContentForm {
+  const record = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const paragraphs = Array.isArray(record.paragraphs)
+    ? record.paragraphs.filter((item): item is string => typeof item === "string").join("\n\n")
+    : "";
+
+  return {
+    eyebrow: typeof record.eyebrow === "string" ? record.eyebrow : "About",
+    title:
+      typeof record.title === "string"
+        ? record.title
+        : "Two photographers, two cameras, two creative instincts, one goal: make the shot worth remembering.",
+    intro:
+      typeof record.intro === "string"
+        ? record.intro
+        : "Based in Gauteng, South Africa, Silly Goose Studio is now a two-photographer setup with one shared obsession: chasing moments that feel alive.",
+    paragraphs,
+    primaryImage: typeof record.primary_image === "string" ? record.primary_image : "/images/about/photographer-portrait.jpg",
+    secondaryImage:
+      typeof record.secondary_image === "string" ? record.secondary_image : "/images/portraits/bridge-jungle-view.jpg",
+    secondaryCaption:
+      typeof record.secondary_caption === "string" ? record.secondary_caption : 'The face behind "Into the Wild".',
+    panelTitle: typeof record.panel_title === "string" ? record.panel_title : "Two views, one standard",
+    panelBody:
+      typeof record.panel_body === "string"
+        ? record.panel_body
+        : "Different instincts behind the camera. Same bar for quality, story, and timing.",
+  };
+}
 
 function publicUrl(bucket: string, path: string | null) {
   if (!path) return null;
@@ -46,17 +89,20 @@ export default function LibraryClient({
   currentUserId,
   currentUserLabel,
   initialPhotos,
-  categories,
+  initialCategories,
   photographers,
+  initialAboutContent,
 }: {
   currentUserId: string;
   currentUserLabel: string;
   initialPhotos: Photo[];
-  categories: Category[];
+  initialCategories: Category[];
   photographers: Photographer[];
+  initialAboutContent: SiteContentValue | null;
 }) {
   const supabase = createClient();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(initialPhotos[0]?.id ?? null);
@@ -84,10 +130,21 @@ export default function LibraryClient({
   const [editWatermarkPosition, setEditWatermarkPosition] =
     useState<WatermarkPosition>("bottom-right");
   const [editWatermarkScale, setEditWatermarkScale] = useState(18);
+  const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [newCategoryLabel, setNewCategoryLabel] = useState("");
+  const [aboutForm, setAboutForm] = useState<AboutContentForm>(normalizeAboutContent(initialAboutContent));
 
   useEffect(() => {
     setPhotos(initialPhotos);
   }, [initialPhotos]);
+
+  useEffect(() => {
+    setCategories(initialCategories);
+  }, [initialCategories]);
+
+  useEffect(() => {
+    setAboutForm(normalizeAboutContent(initialAboutContent));
+  }, [initialAboutContent]);
 
   useEffect(() => {
     if (!photos.length) {
@@ -468,6 +525,102 @@ export default function LibraryClient({
     setNotice("Photo deleted.");
     setPhotos((current) => current.filter((photo) => photo.id !== selectedPhoto.id));
     setSelectedId(null);
+    setBusyAction(null);
+  }
+
+  async function createCategory(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusyAction("create-category");
+    setError(null);
+    setNotice(null);
+
+    const slug = slugify(newCategorySlug || newCategoryLabel);
+
+    const { data, error: insertError } = await supabase
+      .from("categories")
+      .insert({
+        slug,
+        label: newCategoryLabel.trim(),
+        sort_order: categories.length,
+        is_active: true,
+      })
+      .select("*")
+      .single();
+
+    if (insertError || !data) {
+      setError(insertError?.message || "Could not create category.");
+      setBusyAction(null);
+      return;
+    }
+
+    setCategories((current) => [...current, data].sort((a, b) => a.sort_order - b.sort_order));
+    setNewCategoryLabel("");
+    setNewCategorySlug("");
+    setNotice("Category created.");
+    setBusyAction(null);
+  }
+
+  async function saveCategory(category: Category) {
+    setBusyAction(`category-${category.slug}`);
+    setError(null);
+    setNotice(null);
+
+    const { data, error: updateError } = await supabase
+      .from("categories")
+      .update({
+        label: category.label,
+        sort_order: category.sort_order,
+        is_active: category.is_active,
+      })
+      .eq("slug", category.slug)
+      .select("*")
+      .single();
+
+    if (updateError || !data) {
+      setError(updateError?.message || "Could not save category.");
+      setBusyAction(null);
+      return;
+    }
+
+    setCategories((current) =>
+      current.map((item) => (item.slug === data.slug ? data : item)).sort((a, b) => a.sort_order - b.sort_order)
+    );
+    setNotice(`Saved ${data.label}.`);
+    setBusyAction(null);
+  }
+
+  async function saveAboutContent() {
+    setBusyAction("about-content");
+    setError(null);
+    setNotice(null);
+
+    const payload = {
+      eyebrow: aboutForm.eyebrow.trim(),
+      title: aboutForm.title.trim(),
+      intro: aboutForm.intro.trim(),
+      paragraphs: aboutForm.paragraphs
+        .split(/\n{2,}/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+      primary_image: aboutForm.primaryImage.trim(),
+      secondary_image: aboutForm.secondaryImage.trim(),
+      secondary_caption: aboutForm.secondaryCaption.trim(),
+      panel_title: aboutForm.panelTitle.trim(),
+      panel_body: aboutForm.panelBody.trim(),
+    };
+
+    const { error: upsertError } = await supabase.from("site_content").upsert({
+      key: "about_page",
+      value: payload,
+    });
+
+    if (upsertError) {
+      setError(upsertError.message);
+      setBusyAction(null);
+      return;
+    }
+
+    setNotice("About page updated.");
     setBusyAction(null);
   }
 
@@ -975,6 +1128,188 @@ export default function LibraryClient({
                   Select a photo from the library to edit it.
                 </div>
               )}
+            </section>
+
+            <section className="rounded-[1.8rem] border bg-white/80 p-5 shadow-[0_20px_50px_rgba(28,24,20,0.06)]">
+              <div>
+                <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
+                  Categories
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">Manage categories</h2>
+              </div>
+
+              <form onSubmit={createCategory} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <input
+                  type="text"
+                  value={newCategoryLabel}
+                  onChange={(event) => setNewCategoryLabel(event.target.value)}
+                  placeholder="New category label"
+                  className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                  required
+                />
+                <input
+                  type="text"
+                  value={newCategorySlug}
+                  onChange={(event) => setNewCategorySlug(event.target.value)}
+                  placeholder="Slug (optional)"
+                  className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={busyAction === "create-category"}
+                  className="cursor-pointer rounded-2xl bg-black px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busyAction === "create-category" ? "Adding..." : "Add"}
+                </button>
+              </form>
+
+              <div className="mt-5 space-y-3">
+                {categories.map((category, index) => (
+                  <div key={category.slug} className="grid gap-3 rounded-[1.4rem] border bg-[color:var(--color-surface)] p-4">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px]">
+                      <input
+                        type="text"
+                        value={category.label}
+                        onChange={(event) =>
+                          setCategories((current) =>
+                            current.map((item) =>
+                              item.slug === category.slug ? { ...item, label: event.target.value } : item
+                            )
+                          )
+                        }
+                        className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                      />
+                      <input
+                        type="number"
+                        value={category.sort_order}
+                        onChange={(event) =>
+                          setCategories((current) =>
+                            current.map((item) =>
+                              item.slug === category.slug
+                                ? { ...item, sort_order: Number(event.target.value) }
+                                : item
+                            )
+                          )
+                        }
+                        className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCategories((current) =>
+                            current.map((item) =>
+                              item.slug === category.slug ? { ...item, is_active: !item.is_active } : item
+                            )
+                          )
+                        }
+                        className={cn(
+                          "cursor-pointer rounded-2xl border px-4 py-3 text-sm font-medium",
+                          category.is_active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"
+                        )}
+                      >
+                        {category.is_active ? "Active" : "Hidden"}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--color-muted)]">
+                        {category.slug}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => saveCategory(category)}
+                        disabled={busyAction === `category-${category.slug}`}
+                        className="cursor-pointer rounded-2xl border border-black/15 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {busyAction === `category-${category.slug}` ? "Saving..." : `Save ${index + 1}`}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[1.8rem] border bg-white/80 p-5 shadow-[0_20px_50px_rgba(28,24,20,0.06)]">
+              <div>
+                <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
+                  About page
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">Edit About section</h2>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <input
+                  type="text"
+                  value={aboutForm.eyebrow}
+                  onChange={(event) => setAboutForm((current) => ({ ...current, eyebrow: event.target.value }))}
+                  placeholder="Eyebrow"
+                  className="w-full rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <textarea
+                  value={aboutForm.title}
+                  onChange={(event) => setAboutForm((current) => ({ ...current, title: event.target.value }))}
+                  rows={3}
+                  className="w-full rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <textarea
+                  value={aboutForm.intro}
+                  onChange={(event) => setAboutForm((current) => ({ ...current, intro: event.target.value }))}
+                  rows={3}
+                  className="w-full rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <textarea
+                  value={aboutForm.paragraphs}
+                  onChange={(event) => setAboutForm((current) => ({ ...current, paragraphs: event.target.value }))}
+                  rows={8}
+                  className="w-full rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={aboutForm.primaryImage}
+                    onChange={(event) => setAboutForm((current) => ({ ...current, primaryImage: event.target.value }))}
+                    placeholder="Primary image path"
+                    className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={aboutForm.secondaryImage}
+                    onChange={(event) => setAboutForm((current) => ({ ...current, secondaryImage: event.target.value }))}
+                    placeholder="Secondary image path"
+                    className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={aboutForm.secondaryCaption}
+                  onChange={(event) => setAboutForm((current) => ({ ...current, secondaryCaption: event.target.value }))}
+                  placeholder="Secondary image caption"
+                  className="w-full rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={aboutForm.panelTitle}
+                    onChange={(event) => setAboutForm((current) => ({ ...current, panelTitle: event.target.value }))}
+                    placeholder="Panel title"
+                    className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={aboutForm.panelBody}
+                    onChange={(event) => setAboutForm((current) => ({ ...current, panelBody: event.target.value }))}
+                    placeholder="Panel body"
+                    className="rounded-2xl border bg-[color:var(--color-surface)] px-4 py-3 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={saveAboutContent}
+                  disabled={busyAction === "about-content"}
+                  className="w-full cursor-pointer rounded-2xl bg-[color:var(--color-accent)] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busyAction === "about-content" ? "Saving..." : "Save About page"}
+                </button>
+              </div>
             </section>
           </div>
         </section>
