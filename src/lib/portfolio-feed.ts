@@ -63,10 +63,7 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
         photo.thumbnail_path ?? photo.display_path
       ),
       displaySrc: getSupabasePublicFileUrl(photo.display_bucket, photo.display_path),
-      fullSrc: getSupabasePublicFileUrl(
-        photo.original_bucket,
-        photo.original_path ?? photo.display_path
-      ),
+      fullSrc: getSupabasePublicFileUrl(photo.display_bucket, photo.display_path),
     })),
     source: "supabase",
   };
