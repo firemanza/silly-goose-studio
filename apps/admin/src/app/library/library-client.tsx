@@ -216,8 +216,9 @@ export default function LibraryClient({
           watermark: {
             asset: uploadWatermarkAsset,
             position: uploadWatermarkPosition,
-            scalePercent: uploadWatermarkScale + 4,
+            scalePercent: Math.max(uploadWatermarkScale + 10, Math.round(uploadWatermarkScale * 1.7)),
           },
+          minimumWatermarkWidth: 180,
         }),
       ]);
 
@@ -380,8 +381,9 @@ export default function LibraryClient({
           watermark: {
             asset: editWatermarkAsset,
             position: editWatermarkPosition,
-            scalePercent: editWatermarkScale + 4,
+            scalePercent: Math.max(editWatermarkScale + 10, Math.round(editWatermarkScale * 1.7)),
           },
+          minimumWatermarkWidth: 180,
         }),
       ]);
 
@@ -549,8 +551,8 @@ export default function LibraryClient({
           </div>
         ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_420px]">
-          <div className="space-y-4">
+        <section className="grid gap-6 xl:h-[calc(100vh-18rem)] xl:grid-cols-[minmax(0,1.1fr)_420px] xl:items-start">
+          <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:overflow-y-auto xl:pr-2">
             <div className="flex flex-col gap-3 rounded-[1.8rem] border bg-white/75 p-4 shadow-[0_20px_50px_rgba(28,24,20,0.06)] sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-2">
                 {(["all", "draft", "published", "archived"] as StatusFilter[]).map((status) => (
@@ -648,7 +650,7 @@ export default function LibraryClient({
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 xl:h-full xl:overflow-y-auto xl:pr-1">
             <form
               onSubmit={handleUpload}
               className="rounded-[1.8rem] border bg-white/80 p-5 shadow-[0_20px_50px_rgba(28,24,20,0.06)]"

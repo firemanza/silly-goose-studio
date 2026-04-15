@@ -69,10 +69,11 @@ function drawWatermark(
   watermark: HTMLImageElement,
   canvasWidth: number,
   canvasHeight: number,
-  settings: WatermarkSettings
+  settings: WatermarkSettings,
+  minimumWidth = 120
 ) {
   const longestSide = Math.max(canvasWidth, canvasHeight);
-  const targetWidth = Math.max(120, Math.round(canvasWidth * (settings.scalePercent / 100)));
+  const targetWidth = Math.max(minimumWidth, Math.round(canvasWidth * (settings.scalePercent / 100)));
   const ratio = targetWidth / watermark.width;
   const watermarkWidth = Math.round(watermark.width * ratio);
   const watermarkHeight = Math.round(watermark.height * ratio);
@@ -97,11 +98,13 @@ export async function createWatermarkedRendition({
   maxDimension,
   quality,
   watermark,
+  minimumWatermarkWidth,
 }: {
   source: Blob;
   maxDimension: number;
   quality: number;
   watermark: WatermarkSettings;
+  minimumWatermarkWidth?: number;
 }) {
   const [image, watermarkImage] = await Promise.all([
     imageFromBlob(source),
@@ -123,7 +126,7 @@ export async function createWatermarkedRendition({
   }
 
   context.drawImage(image, 0, 0, width, height);
-  drawWatermark(context, watermarkImage, width, height, watermark);
+  drawWatermark(context, watermarkImage, width, height, watermark, minimumWatermarkWidth);
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", quality)
