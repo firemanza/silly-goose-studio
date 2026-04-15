@@ -30,7 +30,7 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
       supabase
         .from("photos")
         .select(
-          "title, alt_text, category_slug, width, height, thumbnail_bucket, thumbnail_path, display_bucket, display_path, original_bucket, original_path"
+          "title, alt_text, category_slug, width, height, thumbnail_bucket, thumbnail_path, display_bucket, display_path, original_bucket, original_path, watermark_position"
         )
         .eq("status", "published")
         .order("sort_order", { ascending: false })
@@ -64,6 +64,8 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
       ),
       displaySrc: getSupabasePublicFileUrl(photo.display_bucket, photo.display_path),
       fullSrc: getSupabasePublicFileUrl(photo.display_bucket, photo.display_path),
+      watermarkPosition:
+        (photo.watermark_position as PortfolioImage["watermarkPosition"] | null) ?? "bottom-right",
     })),
     source: "supabase",
   };

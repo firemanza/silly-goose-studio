@@ -64,6 +64,9 @@ export type Database = {
           title: string;
           updated_at: string;
           updated_by: string | null;
+          watermark_asset: string | null;
+          watermark_position: string | null;
+          watermark_scale_percent: number | null;
           width: number | null;
         };
         Insert: {
@@ -90,6 +93,9 @@ export type Database = {
           title: string;
           updated_at?: string;
           updated_by?: string | null;
+          watermark_asset?: string | null;
+          watermark_position?: string | null;
+          watermark_scale_percent?: number | null;
           width?: number | null;
         };
         Update: {
@@ -116,6 +122,9 @@ export type Database = {
           title?: string;
           updated_at?: string;
           updated_by?: string | null;
+          watermark_asset?: string | null;
+          watermark_position?: string | null;
+          watermark_scale_percent?: number | null;
           width?: number | null;
         };
         Relationships: [];

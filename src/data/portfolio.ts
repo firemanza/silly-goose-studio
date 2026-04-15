@@ -8,6 +8,7 @@ export interface PortfolioImage {
   thumbnailSrc?: string;
   displaySrc?: string;
   fullSrc?: string;
+  watermarkPosition?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 }
 
 export const portfolioImages: PortfolioImage[] = [
