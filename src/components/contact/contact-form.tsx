@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import emailjs from "@emailjs/browser";
+import { siteConfig } from "@/config/site";
 import Button from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +67,8 @@ export default function ContactForm() {
     howFound: "",
   });
 
+  const directEmailHref = `mailto:${siteConfig.contact.email}?subject=${encodeURIComponent("Photography enquiry")}`;
+
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -100,7 +103,7 @@ export default function ContactForm() {
 
     if (!serviceId || !templateId || !publicKey) {
       setStatus("error");
-      setErrorMessage("Form is not configured yet. Please try again later.");
+      setErrorMessage("Form is not configured yet. Please email directly instead.");
       return;
     }
 
@@ -139,7 +142,7 @@ export default function ContactForm() {
       setTurnstileToken("");
     } catch {
       setStatus("error");
-      setErrorMessage("Something went wrong. Please try again or email me directly.");
+      setErrorMessage("Something went wrong. Please email directly instead.");
     }
   };
 
@@ -355,7 +358,17 @@ export default function ContactForm() {
           {status === "sending" ? "Sending..." : "Send Enquiry"}
         </Button>
 
-        {status === "error" && <p className="text-sm text-red-700">{errorMessage}</p>}
+        {status === "error" && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-700">{errorMessage}</p>
+            <a
+              href={directEmailHref}
+              className="inline-flex cursor-pointer items-center rounded-sm border border-foreground/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-foreground transition-colors duration-200 hover:border-accent hover:text-accent"
+            >
+              Email {siteConfig.contact.email}
+            </a>
+          </div>
+        )}
       </div>
     </form>
   );

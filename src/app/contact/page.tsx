@@ -31,6 +31,16 @@ export default function ContactPage() {
           <AnimatedSection animation="fade-in" delay={180}>
             <div className="space-y-7 rounded-sm border border-foreground/12 bg-surface/70 p-7">
               <div>
+                <h3 className="font-heading text-2xl text-foreground">Direct Email</h3>
+                <a
+                  href={`mailto:${siteConfig.contact.email}?subject=${encodeURIComponent("Photography enquiry")}`}
+                  className="mt-2 inline-flex items-center gap-2 rounded-sm border border-foreground/20 px-4 py-2 text-xs tracking-[0.14em] text-foreground uppercase transition-all hover:border-accent hover:text-accent"
+                >
+                  {siteConfig.contact.email}
+                </a>
+              </div>
+
+              <div>
                 <h3 className="font-heading text-2xl text-foreground">Location</h3>
                 <p className="mt-2 text-sm text-muted">{siteConfig.contact.location}</p>
               </div>
@@ -56,7 +66,7 @@ export default function ContactPage() {
 
               <div className="border-t border-foreground/12 pt-6">
                 <p className="text-xs leading-relaxed text-muted">
-                  This form is for enquiries. Pricing and booking details are shared after an initial conversation.
+                  If the form gives trouble, send a direct email instead. Pricing and booking details are shared after an initial conversation.
                 </p>
               </div>
             </div>
