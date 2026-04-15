@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import type { Database } from "@shared/supabase/database.types";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatDate, slugify } from "@/lib/utils";
+import {
+  createWatermarkedRendition,
+  WATERMARK_OPTIONS,
+  WATERMARK_POSITIONS,
+  type WatermarkAsset,
+  type WatermarkPosition,
+} from "@/lib/watermark";
 
 type Photo = Database["public"]["Tables"]["photos"]["Row"];
 type Category = Database["public"]["Tables"]["categories"]["Row"];
@@ -36,52 +43,6 @@ function formatBytes(bytes: number | null | undefined) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function imageFromFile(file: File) {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Could not read image"));
-      img.src = objectUrl;
-    });
-
-    return image;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function resizeImage(file: File, maxDimension: number, quality: number) {
-  const image = await imageFromFile(file);
-  const ratio = Math.min(maxDimension / image.width, maxDimension / image.height, 1);
-  const width = Math.round(image.width * ratio);
-  const height = Math.round(image.height * ratio);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("Could not initialize canvas");
-  }
-
-  context.drawImage(image, 0, 0, width, height);
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", quality)
-  );
-
-  if (!blob) {
-    throw new Error("Could not resize image");
-  }
-
-  return { blob, width, height };
-}
-
 export default function LibraryClient({
   currentUserId,
   currentUserLabel,
@@ -110,6 +71,10 @@ export default function LibraryClient({
   const [uploadCategory, setUploadCategory] = useState(categories[0]?.slug ?? "wildlife");
   const [uploadPhotographer, setUploadPhotographer] = useState(currentUserId);
   const [uploadStatus, setUploadStatus] = useState<"draft" | "published">("draft");
+  const [uploadWatermarkAsset, setUploadWatermarkAsset] = useState<WatermarkAsset>("logo_black");
+  const [uploadWatermarkPosition, setUploadWatermarkPosition] =
+    useState<WatermarkPosition>("bottom-right");
+  const [uploadWatermarkScale, setUploadWatermarkScale] = useState(18);
 
   const [editTitle, setEditTitle] = useState(initialPhotos[0]?.title ?? "");
   const [editCategory, setEditCategory] = useState(initialPhotos[0]?.category_slug ?? categories[0]?.slug ?? "");
@@ -117,6 +82,10 @@ export default function LibraryClient({
   const [editStatus, setEditStatus] = useState<"draft" | "published" | "archived">(
     (initialPhotos[0]?.status as "draft" | "published" | "archived" | undefined) ?? "draft"
   );
+  const [editWatermarkAsset, setEditWatermarkAsset] = useState<WatermarkAsset>("logo_black");
+  const [editWatermarkPosition, setEditWatermarkPosition] =
+    useState<WatermarkPosition>("bottom-right");
+  const [editWatermarkScale, setEditWatermarkScale] = useState(18);
 
   useEffect(() => {
     setPhotos(initialPhotos);
@@ -159,6 +128,9 @@ export default function LibraryClient({
     setEditCategory(photo.category_slug);
     setEditPhotographer(photo.photographer_id ?? currentUserId);
     setEditStatus(photo.status as "draft" | "published" | "archived");
+    setEditWatermarkAsset("logo_black");
+    setEditWatermarkPosition("bottom-right");
+    setEditWatermarkScale(18);
   }
 
   function upsertPhoto(nextPhoto: Photo) {
@@ -172,6 +144,32 @@ export default function LibraryClient({
 
   async function refresh() {
     router.refresh();
+  }
+
+  async function sourceBlobForPhoto(photo: Photo) {
+    if (photo.original_path && photo.original_bucket !== "external") {
+      const { data, error } = await supabase.storage.from(photo.original_bucket).download(photo.original_path);
+
+      if (error || !data) {
+        throw new Error(error?.message || "Could not download original image.");
+      }
+
+      return data;
+    }
+
+    const sourceUrl = publicUrl(photo.original_bucket, photo.original_path || photo.display_path);
+
+    if (!sourceUrl) {
+      throw new Error("Could not resolve source image.");
+    }
+
+    const response = await fetch(sourceUrl);
+
+    if (!response.ok) {
+      throw new Error("Could not load source image.");
+    }
+
+    return await response.blob();
   }
 
   async function handleSignOut() {
@@ -201,8 +199,26 @@ export default function LibraryClient({
       const thumbPath = `${uploadPhotographer}/${baseName}-thumb.jpg`;
 
       const [{ blob: displayBlob, width, height }, { blob: thumbBlob }] = await Promise.all([
-        resizeImage(uploadFile, 2400, 0.86),
-        resizeImage(uploadFile, 800, 0.78),
+        createWatermarkedRendition({
+          source: uploadFile,
+          maxDimension: 2400,
+          quality: 0.86,
+          watermark: {
+            asset: uploadWatermarkAsset,
+            position: uploadWatermarkPosition,
+            scalePercent: uploadWatermarkScale,
+          },
+        }),
+        createWatermarkedRendition({
+          source: uploadFile,
+          maxDimension: 800,
+          quality: 0.78,
+          watermark: {
+            asset: uploadWatermarkAsset,
+            position: uploadWatermarkPosition,
+            scalePercent: uploadWatermarkScale + 4,
+          },
+        }),
       ]);
 
       const [{ error: originalError }, { error: displayError }, { error: thumbError }] = await Promise.all([
@@ -335,6 +351,94 @@ export default function LibraryClient({
     syncEditor(updatedPhoto);
     refresh();
     setBusyAction(null);
+  }
+
+  async function rebuildSelectedWatermark() {
+    if (!selectedPhoto) return;
+
+    setBusyAction("watermark");
+    setError(null);
+    setNotice(null);
+
+    try {
+      const sourceBlob = await sourceBlobForPhoto(selectedPhoto);
+      const [{ blob: displayBlob, width, height }, { blob: thumbBlob }] = await Promise.all([
+        createWatermarkedRendition({
+          source: sourceBlob,
+          maxDimension: 2400,
+          quality: 0.86,
+          watermark: {
+            asset: editWatermarkAsset,
+            position: editWatermarkPosition,
+            scalePercent: editWatermarkScale,
+          },
+        }),
+        createWatermarkedRendition({
+          source: sourceBlob,
+          maxDimension: 800,
+          quality: 0.78,
+          watermark: {
+            asset: editWatermarkAsset,
+            position: editWatermarkPosition,
+            scalePercent: editWatermarkScale + 4,
+          },
+        }),
+      ]);
+
+      const displayPath =
+        selectedPhoto.display_bucket === "external"
+          ? `${selectedPhoto.photographer_id ?? currentUserId}/${selectedPhoto.id}-watermarked.jpg`
+          : selectedPhoto.display_path;
+      const thumbPath =
+        selectedPhoto.thumbnail_bucket === "external" || !selectedPhoto.thumbnail_path
+          ? `${selectedPhoto.photographer_id ?? currentUserId}/${selectedPhoto.id}-watermarked-thumb.jpg`
+          : selectedPhoto.thumbnail_path;
+
+      const [{ error: displayError }, { error: thumbError }] = await Promise.all([
+        supabase.storage.from("photo-display").upload(displayPath, displayBlob, {
+          contentType: "image/jpeg",
+          upsert: true,
+        }),
+        supabase.storage.from("photo-thumbs").upload(thumbPath, thumbBlob, {
+          contentType: "image/jpeg",
+          upsert: true,
+        }),
+      ]);
+
+      if (displayError || thumbError) {
+        throw new Error(displayError?.message || thumbError?.message);
+      }
+
+      const { data: updatedPhoto, error: updateError } = await supabase
+        .from("photos")
+        .update({
+          display_bucket: "photo-display",
+          display_path: displayPath,
+          display_size_bytes: displayBlob.size,
+          thumbnail_bucket: "photo-thumbs",
+          thumbnail_path: thumbPath,
+          thumbnail_size_bytes: thumbBlob.size,
+          width,
+          height,
+          updated_by: currentUserId,
+        })
+        .eq("id", selectedPhoto.id)
+        .select("*")
+        .single();
+
+      if (updateError || !updatedPhoto) {
+        throw new Error(updateError?.message || "Watermark rebuild failed.");
+      }
+
+      setNotice("Public images rebuilt with watermark.");
+      upsertPhoto(updatedPhoto);
+      syncEditor(updatedPhoto);
+      refresh();
+    } catch (rebuildError) {
+      setError(rebuildError instanceof Error ? rebuildError.message : "Watermark rebuild failed.");
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function deleteSelectedPhoto() {
@@ -645,6 +749,52 @@ export default function LibraryClient({
                   </button>
                 </div>
 
+                <div className="rounded-[1.5rem] border bg-[color:var(--color-surface)] p-4">
+                  <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
+                    Watermark
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <select
+                      value={uploadWatermarkAsset}
+                      onChange={(event) => setUploadWatermarkAsset(event.target.value as WatermarkAsset)}
+                      className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                    >
+                      {WATERMARK_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={uploadWatermarkPosition}
+                      onChange={(event) =>
+                        setUploadWatermarkPosition(event.target.value as WatermarkPosition)
+                      }
+                      className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                    >
+                      {WATERMARK_POSITIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-[color:var(--color-muted)]">
+                      Size {uploadWatermarkScale}%
+                    </label>
+                    <input
+                      type="range"
+                      min="8"
+                      max="30"
+                      step="1"
+                      value={uploadWatermarkScale}
+                      onChange={(event) => setUploadWatermarkScale(Number(event.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={busyAction === "upload"}
@@ -733,7 +883,53 @@ export default function LibraryClient({
                     <option value="archived">Archived</option>
                   </select>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-[1.5rem] border bg-[color:var(--color-surface)] p-4">
+                    <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-muted)]">
+                      Watermark
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <select
+                        value={editWatermarkAsset}
+                        onChange={(event) => setEditWatermarkAsset(event.target.value as WatermarkAsset)}
+                        className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                      >
+                        {WATERMARK_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={editWatermarkPosition}
+                        onChange={(event) =>
+                          setEditWatermarkPosition(event.target.value as WatermarkPosition)
+                        }
+                        className="rounded-2xl border bg-white px-4 py-3 text-sm"
+                      >
+                        {WATERMARK_POSITIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mt-3">
+                      <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-[color:var(--color-muted)]">
+                        Size {editWatermarkScale}%
+                      </label>
+                      <input
+                        type="range"
+                        min="8"
+                        max="30"
+                        step="1"
+                        value={editWatermarkScale}
+                        onChange={(event) => setEditWatermarkScale(Number(event.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <button
                       type="button"
                       onClick={saveSelectedPhoto}
@@ -741,6 +937,14 @@ export default function LibraryClient({
                       className="cursor-pointer rounded-2xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {busyAction === "save" ? "Saving..." : "Save changes"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={rebuildSelectedWatermark}
+                      disabled={busyAction === "watermark"}
+                      className="cursor-pointer rounded-2xl border border-black/15 bg-[color:var(--color-surface)] px-4 py-3 text-sm font-semibold text-[color:var(--color-ink)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {busyAction === "watermark" ? "Baking..." : "Bake watermark"}
                     </button>
                     <button
                       type="button"
