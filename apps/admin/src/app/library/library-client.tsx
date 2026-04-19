@@ -84,6 +84,17 @@ function formatBytes(bytes: number | null | undefined) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function LibraryClient({
   currentUserId,
   currentUserLabel,
@@ -484,6 +495,38 @@ export default function LibraryClient({
       syncEditor(updatedPhoto);
     } catch (rebuildError) {
       setError(rebuildError instanceof Error ? rebuildError.message : "Watermark rebuild failed.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function downloadWatermarkedSelected() {
+    if (!selectedPhoto) return;
+
+    setBusyAction("download");
+    setError(null);
+    setNotice(null);
+
+    try {
+      const sourceBlob = await sourceBlobForPhoto(selectedPhoto);
+
+      const asset = (selectedPhoto.watermark_asset as WatermarkAsset | null) ?? editWatermarkAsset;
+      const position =
+        (selectedPhoto.watermark_position as WatermarkPosition | null) ?? editWatermarkPosition;
+      const scalePercent = selectedPhoto.watermark_scale_percent ?? editWatermarkScale;
+
+      const { blob } = await createWatermarkedRendition({
+        source: sourceBlob,
+        maxDimension: 100000,
+        quality: 0.95,
+        watermark: { asset, position, scalePercent },
+      });
+
+      const slug = slugify(selectedPhoto.title || "photo") || "photo";
+      triggerBlobDownload(blob, `${slug}-watermarked.jpg`);
+      setNotice("Watermarked image downloaded.");
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? downloadError.message : "Download failed.");
     } finally {
       setBusyAction(null);
     }
@@ -1071,6 +1114,17 @@ export default function LibraryClient({
                       />
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={downloadWatermarkedSelected}
+                    disabled={busyAction === "download"}
+                    className="w-full cursor-pointer rounded-2xl border border-black/15 bg-white px-4 py-3 text-sm font-semibold text-[color:var(--color-ink)] transition hover:bg-[color:var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {busyAction === "download"
+                      ? "Preparing download..."
+                      : "Download watermarked image (full resolution)"}
+                  </button>
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <button
