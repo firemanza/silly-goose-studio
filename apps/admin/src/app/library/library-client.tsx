@@ -517,16 +517,26 @@ export default function LibraryClient({
     try {
       const sourceBlob = await sourceBlobForPhoto(selectedPhoto);
 
+      const storedAsset = selectedPhoto.watermark_asset;
+      const storedPosition = selectedPhoto.watermark_position;
+      const asset: WatermarkAsset =
+        typeof storedAsset === "string" &&
+        WATERMARK_OPTIONS.some((option) => option.value === storedAsset)
+          ? (storedAsset as WatermarkAsset)
+          : "logo_black";
+      const position: WatermarkPosition =
+        typeof storedPosition === "string" &&
+        WATERMARK_POSITIONS.some((option) => option.value === storedPosition)
+          ? (storedPosition as WatermarkPosition)
+          : "bottom-right";
+      const scalePercent = selectedPhoto.watermark_scale_percent ?? 18;
+
       const { blob } = await createWatermarkedRendition({
         source: sourceBlob,
         maxDimension: 100000,
         quality: 1,
         outputType: "image/png",
-        watermark: {
-          asset: editWatermarkAsset,
-          position: editWatermarkPosition,
-          scalePercent: editWatermarkScale,
-        },
+        watermark: { asset, position, scalePercent },
       });
 
       const slug = slugify(selectedPhoto.title || "photo") || "photo";
