@@ -136,10 +136,15 @@ export default function LibraryClient({
   const [editStatus, setEditStatus] = useState<"draft" | "published" | "archived">(
     (initialPhotos[0]?.status as "draft" | "published" | "archived" | undefined) ?? "draft"
   );
-  const [editWatermarkAsset, setEditWatermarkAsset] = useState<WatermarkAsset>("logo_black");
-  const [editWatermarkPosition, setEditWatermarkPosition] =
-    useState<WatermarkPosition>("bottom-right");
-  const [editWatermarkScale, setEditWatermarkScale] = useState(18);
+  const [editWatermarkAsset, setEditWatermarkAsset] = useState<WatermarkAsset>(
+    (initialPhotos[0]?.watermark_asset as WatermarkAsset | null) ?? "logo_black"
+  );
+  const [editWatermarkPosition, setEditWatermarkPosition] = useState<WatermarkPosition>(
+    (initialPhotos[0]?.watermark_position as WatermarkPosition | null) ?? "bottom-right"
+  );
+  const [editWatermarkScale, setEditWatermarkScale] = useState(
+    initialPhotos[0]?.watermark_scale_percent ?? 18
+  );
   const [newCategorySlug, setNewCategorySlug] = useState("");
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [aboutForm, setAboutForm] = useState<AboutContentForm>(normalizeAboutContent(initialAboutContent));
@@ -193,9 +198,11 @@ export default function LibraryClient({
     setEditCategory(photo.category_slug);
     setEditPhotographer(photo.photographer_id ?? currentUserId);
     setEditStatus(photo.status as "draft" | "published" | "archived");
-    setEditWatermarkAsset("logo_black");
-    setEditWatermarkPosition("bottom-right");
-    setEditWatermarkScale(18);
+    setEditWatermarkAsset((photo.watermark_asset as WatermarkAsset | null) ?? "logo_black");
+    setEditWatermarkPosition(
+      (photo.watermark_position as WatermarkPosition | null) ?? "bottom-right"
+    );
+    setEditWatermarkScale(photo.watermark_scale_percent ?? 18);
   }
 
   function upsertPhoto(nextPhoto: Photo) {
@@ -510,20 +517,20 @@ export default function LibraryClient({
     try {
       const sourceBlob = await sourceBlobForPhoto(selectedPhoto);
 
-      const asset = (selectedPhoto.watermark_asset as WatermarkAsset | null) ?? editWatermarkAsset;
-      const position =
-        (selectedPhoto.watermark_position as WatermarkPosition | null) ?? editWatermarkPosition;
-      const scalePercent = selectedPhoto.watermark_scale_percent ?? editWatermarkScale;
-
       const { blob } = await createWatermarkedRendition({
         source: sourceBlob,
         maxDimension: 100000,
-        quality: 0.95,
-        watermark: { asset, position, scalePercent },
+        quality: 1,
+        outputType: "image/png",
+        watermark: {
+          asset: editWatermarkAsset,
+          position: editWatermarkPosition,
+          scalePercent: editWatermarkScale,
+        },
       });
 
       const slug = slugify(selectedPhoto.title || "photo") || "photo";
-      triggerBlobDownload(blob, `${slug}-watermarked.jpg`);
+      triggerBlobDownload(blob, `${slug}-watermarked.png`);
       setNotice("Watermarked image downloaded.");
     } catch (downloadError) {
       setError(downloadError instanceof Error ? downloadError.message : "Download failed.");

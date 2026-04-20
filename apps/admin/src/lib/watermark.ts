@@ -99,12 +99,14 @@ export async function createWatermarkedRendition({
   quality,
   watermark,
   minimumWatermarkWidth,
+  outputType,
 }: {
   source: Blob;
   maxDimension: number;
   quality: number;
   watermark: WatermarkSettings;
   minimumWatermarkWidth?: number;
+  outputType?: string;
 }) {
   const [image, watermarkImage] = await Promise.all([
     imageFromBlob(source),
@@ -129,7 +131,7 @@ export async function createWatermarkedRendition({
   drawWatermark(context, watermarkImage, width, height, watermark, minimumWatermarkWidth);
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", quality)
+    canvas.toBlob(resolve, outputType ?? "image/jpeg", quality)
   );
 
   if (!blob) {
