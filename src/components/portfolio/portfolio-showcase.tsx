@@ -54,6 +54,8 @@ function categoryAccent(category: string) {
   if (category === "portraits") return "bg-amber-200";
   if (category === "pets") return "bg-rose-200";
   if (category === "motorsport") return "bg-sky-200";
+  if (category === "abstract") return "bg-violet-200";
+  if (category === "weddings") return "bg-pink-200";
   return "bg-stone-200";
 }
 
@@ -80,6 +82,18 @@ function categoryFilterStyle(category: string, isActive: boolean) {
     return isActive
       ? "border-sky-500/60 bg-sky-200 text-foreground shadow-[0_8px_18px_rgba(3,105,161,0.12)]"
       : "border-sky-200 bg-sky-100/70 text-foreground/75 hover:border-sky-400 hover:bg-sky-200 hover:text-foreground";
+  }
+
+  if (category === "abstract") {
+    return isActive
+      ? "border-violet-500/60 bg-violet-200 text-foreground shadow-[0_8px_18px_rgba(76,29,149,0.12)]"
+      : "border-violet-200 bg-violet-100/70 text-foreground/75 hover:border-violet-400 hover:bg-violet-200 hover:text-foreground";
+  }
+
+  if (category === "weddings") {
+    return isActive
+      ? "border-pink-500/60 bg-pink-200 text-foreground shadow-[0_8px_18px_rgba(157,23,77,0.12)]"
+      : "border-pink-200 bg-pink-100/70 text-foreground/75 hover:border-pink-400 hover:bg-pink-200 hover:text-foreground";
   }
 
   return isActive

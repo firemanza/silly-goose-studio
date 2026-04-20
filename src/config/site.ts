@@ -24,6 +24,8 @@ export const siteConfig = {
     { slug: "portraits", label: "Portraits" },
     { slug: "pets", label: "Pets" },
     { slug: "motorsport", label: "Motorsport" },
+    { slug: "abstract", label: "Abstract" },
+    { slug: "weddings", label: "Weddings" },
   ],
 } as const;
 

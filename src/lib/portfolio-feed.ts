@@ -13,67 +13,68 @@ export interface PortfolioFeed {
   source: "supabase" | "legacy";
 }
 
-type FeedImage = PortfolioImage & {
-  _categoryOrder: number;
-};
+function dayStableSeed(): number {
+  const now = new Date();
+  return now.getUTCFullYear() * 10000 + (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+}
 
-function mixImagesForAllView(images: PortfolioImage[], categories: PortfolioCategory[]): PortfolioImage[] {
-  const categoryOrder = new Map(categories.map((category, index) => [category.slug, index]));
-  const groupedImages = new Map<string, FeedImage[]>();
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleInPlace<T>(array: T[], rng: () => number) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+function mixImagesForAllView(images: PortfolioImage[]): PortfolioImage[] {
+  const rng = mulberry32(dayStableSeed());
+  const groupedImages = new Map<string, PortfolioImage[]>();
 
   images.forEach((image) => {
-    const enrichedImage: FeedImage = {
-      ...image,
-      _categoryOrder: categoryOrder.get(image.category) ?? Number.MAX_SAFE_INTEGER,
-    };
-
     const bucket = groupedImages.get(image.category);
     if (bucket) {
-      bucket.push(enrichedImage);
-      return;
+      bucket.push(image);
+    } else {
+      groupedImages.set(image.category, [image]);
     }
-
-    groupedImages.set(image.category, [enrichedImage]);
   });
 
-  const categoryQueue = Array.from(groupedImages.entries())
-    .filter(([, bucket]) => bucket.length > 0)
-    .sort((a, b) => {
-      const firstImageA = a[1][0];
-      const firstImageB = b[1][0];
+  for (const bucket of groupedImages.values()) {
+    shuffleInPlace(bucket, rng);
+  }
 
-      if (firstImageA && firstImageB && firstImageA._categoryOrder !== firstImageB._categoryOrder) {
-        return firstImageA._categoryOrder - firstImageB._categoryOrder;
-      }
-
-      return a[0].localeCompare(b[0]);
-    })
-    .map(([slug]) => slug);
+  const queue = Array.from(groupedImages.keys()).filter((slug) => {
+    const bucket = groupedImages.get(slug);
+    return bucket ? bucket.length > 0 : false;
+  });
+  shuffleInPlace(queue, rng);
 
   const mixedImages: PortfolioImage[] = [];
 
-  while (categoryQueue.length > 0) {
-    const currentSlug = categoryQueue.shift();
-
-    if (!currentSlug) {
-      continue;
-    }
+  while (queue.length > 0) {
+    const currentSlug = queue.shift();
+    if (!currentSlug) continue;
 
     const bucket = groupedImages.get(currentSlug);
-
-    if (!bucket?.length) {
-      continue;
-    }
+    if (!bucket?.length) continue;
 
     const nextImage = bucket.shift();
-
     if (nextImage) {
-      const { _categoryOrder: _ignored, ...cleanImage } = nextImage;
-      mixedImages.push(cleanImage);
+      mixedImages.push(nextImage);
     }
 
     if (bucket.length > 0) {
-      categoryQueue.push(currentSlug);
+      queue.push(currentSlug);
     }
   }
 
@@ -136,7 +137,7 @@ export async function getPortfolioFeed(): Promise<PortfolioFeed> {
 
   return {
     categories,
-    images: mixImagesForAllView(images, categories),
+    images: mixImagesForAllView(images),
     source: "supabase",
   };
 }
