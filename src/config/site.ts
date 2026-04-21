@@ -11,7 +11,7 @@ export const siteConfig = {
   social: {
     instagram:
       process.env.NEXT_PUBLIC_INSTAGRAM_URL ||
-      "https://instagram.com/placeholder",
+      "https://instagram.com/aperture_2_photography",
   },
 
   contact: {
