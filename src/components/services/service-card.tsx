@@ -37,7 +37,7 @@ export default function ServiceCard({ service, reversed }: ServiceCardProps) {
         </ul>
 
         <div className="mt-8">
-          <Button href={`/contact?service=${service.slug}`} variant="secondary">
+          <Button href="/contact" variant="secondary">
             Enquire About {service.title}
           </Button>
         </div>
